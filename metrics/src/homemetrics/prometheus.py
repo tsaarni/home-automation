@@ -10,6 +10,10 @@
 from __future__ import annotations
 
 
+def escape_label(value: str) -> str:
+    return str(value).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+
+
 class Samples:
     def __init__(self, labels: dict[str, str] | None = None):
         self.common_labels_for_all_samples = labels if labels else {}
@@ -35,7 +39,7 @@ class Samples:
             s = ""
             labels = {**self.common_labels_for_all_samples, **sample["labels"]}
             if labels:
-                labels_str = ",".join([f'{k}="{v}"' for k, v in labels.items()])
+                labels_str = ",".join(f'{k}="{escape_label(v)}"' for k, v in labels.items())
                 s += f"{{{labels_str}}} "
 
             s += f"{sample['value']}"

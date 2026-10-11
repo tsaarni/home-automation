@@ -16,8 +16,10 @@ sensors:
     poll-period: 1m
 - type: skoda
   config:
-    username: email@example.com
-    password: example-passwd
+    api_key: example-api-key
+    poll-period-disconnected: 2h
+    poll-period-connected: 30m
+    poll-period-charging: 10m
     vin: example-vehicle-identity-number
 - type: spot-hinta
   config:
