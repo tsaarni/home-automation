@@ -1,48 +1,15 @@
-# homeautomation
+# Home automation
 
-Monorepo for home automation services, frontend, and cluster infrastructure.
+Home automation services, web UI, and Kubernetes configuration.
 
-## Repository layout
+> [!WARNING]
+> Personal home automation project. Made for a specific house; it will not work for others.
 
-```
-homeautomation/
-├── automator/    # Home automator service (Python / FastAPI)
-├── infra/        # Kubernetes manifests and container build tooling
-│   ├── docker/   # Dockerfiles and Kubernetes build instructions
-│   └── manifests/# Workload manifests for k3s
-├── metrics/      # Metrics scraper pushing to VictoriaMetrics (Python)
-└── webui/        # Web UI for home automation (React / Vite / TypeScript)
-```
+## Projects
 
-## Microservice Container Builds
+- [Automator](automator/README.md): Home automation service.
+- [Device gateway](device-gateway/README.md): Connects devices to Shelly and MELCloud.
+- [Metrics](metrics/README.md): Sends metrics to VictoriaMetrics.
+- [Web UI](webui/README.md): React web app.
+- [Infrastructure](infra/README.md): Kubernetes configuration and build tools.
 
-Custom service images are built on the Kubernetes node `mele` with Docker Buildx
-and pushed to Quay. See [the build instructions](infra/docker/README.md).
-
-## Developing and Testing
-
-### Automator (`automator/`)
-```bash
-cd automator
-uv sync
-uv run pytest -q
-```
-
-### Metrics (`metrics/`)
-```bash
-cd metrics
-uv sync
-uv run python -m homemetrics --config config.yaml
-```
-
-### Web UI (`webui/`)
-```bash
-cd webui
-pnpm install
-pnpm test
-pnpm build
-pnpm dev
-```
-
-[Device gateway](device-gateway/README.md) connects opt-in automator devices to
-Shelly RPC and MELCloud, with independent reported state and correlated command results.

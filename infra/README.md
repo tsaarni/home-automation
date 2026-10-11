@@ -1,6 +1,7 @@
 # Personal home automation server setup
 
-⚠️ Note: This project is meant for personal use, and is not guaranteed to work for anyone else.
+> [!WARNING]
+> Personal home automation project. Made for a specific house; it will not work for others.
 
 Single-node k3s cluster. All user workloads run in the `default` namespace.
 
@@ -8,38 +9,6 @@ Single-node k3s cluster. All user workloads run in the `default` namespace.
 
 ```
 curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -s - --write-kubeconfig-mode 644 --disable traefik --disable servicelb --disable gateway-api-crd
-```
-
-## Change ingress controller to Contour
-
-Disable default ingress controller
-
-```diff
---- /etc/systemd/system/k3s.service.orig 2021-10-03 13:53:22.887426742 +0000
-+++ /etc/systemd/system/k3s.service     2021-10-03 13:51:16.218849272 +0000
-@@ -29,4 +29,4 @@
- ExecStart=/usr/local/bin/k3s \
-     server \
-        '--write-kubeconfig-mode=644' \
--
-+       --disable traefik \
-+       --disable servicelb \
-+       --disable gateway-api-crd
-```
-
-Restart k3s
-
-```console
-sudo systemctl daemon-reload
-sudo systemctl restart k3s.service
-```
-
-The global kubeconfig file is stored at `/etc/rancher/k3s/k3s.yaml`.
-
-Deploy Contour
-
-```console
-kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
 ```
 
 ## Control the cluster from another machine

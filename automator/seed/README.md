@@ -1,5 +1,8 @@
 # Seed documents
 
+> [!WARNING]
+> Personal home automation project. Made for a specific house; it will not work for others.
+
 This directory contains the documents that the service starts with, and the tool that
 extracts the device documents from the MQTT sources.
 

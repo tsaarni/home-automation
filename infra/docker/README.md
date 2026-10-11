@@ -1,5 +1,8 @@
 # Container builds
 
+> [!WARNING]
+> Personal home automation project. Made for a specific house; it will not work for others.
+
 Run from the repository root. All images use `latest`.
 
 The three Python images use Python 3.14 on Alpine 3.23, with production dependencies

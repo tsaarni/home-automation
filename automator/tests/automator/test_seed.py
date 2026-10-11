@@ -85,7 +85,7 @@ def test_seeded_config_runs_the_parity_scenarios(tmp_path):
         await service.scheduler.tick(clock())
         assert service.state.value("powerplug-terrace", "state") == "OFF"
 
-        # toilet night tariff
+        # floor heating night tariff
         clock.set((local(2026, 1, 16, 22) + PARTIAL).astimezone(ZoneInfo("UTC")))
         await service.scheduler.tick(clock())
         assert service.state.value("thermostat-toilet", "setpoint") == 24

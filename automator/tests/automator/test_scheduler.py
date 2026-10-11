@@ -31,7 +31,7 @@ def terrace_lights() -> list[dict]:
     ]
 
 
-def toilet_tariff() -> list[dict]:
+def floor_heating_tariff_schedule() -> list[dict]:
     return [
         {"id": "toilet-night", "when": {"at": "22:00"}, "then": [{"set": {"device": "thermostat-toilet", "attr": "setpoint", "value": 24}}]},
         {"id": "toilet-day", "when": {"at": "07:00"}, "then": [{"set": {"device": "thermostat-toilet", "attr": "setpoint", "value": 15}}]},
@@ -108,10 +108,10 @@ def test_firing_twice_is_idempotent(tmp_path):
     assert service.state.value("powerplug-terrace", "state") == "OFF"
 
 
-def test_toilet_night_tariff(tmp_path):
+def test_floor_heating_tariff_schedule(tmp_path):
     clock = FakeClock(local(2026, 1, 15, 20).astimezone(ZoneInfo("UTC")))
     service = make_service(tmp_path, clock)
-    add_documents(service, devices=[thermostat()], rules=toilet_tariff())
+    add_documents(service, devices=[thermostat()], rules=floor_heating_tariff_schedule())
 
     async def scenario():
         await service.scheduler.tick(clock())

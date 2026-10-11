@@ -1,6 +1,7 @@
 # Metrics scraper for home automation
 
-⚠️ Note: This project is meant for personal use, and is not guaranteed to work for anyone else.
+> [!WARNING]
+> Personal home automation project. Made for a specific house; it will not work for others.
 
 ## Description
 

@@ -82,7 +82,7 @@
   },
   {
     "id": "toilet-day",
-    "name": "Toilet day tariff",
+    "name": "Floor heating day tariff",
     "enabled": true,
     "priority": 0,
     "once": false,
@@ -92,7 +92,7 @@
   },
   {
     "id": "toilet-night",
-    "name": "Toilet night tariff",
+    "name": "Floor heating night tariff",
     "enabled": true,
     "priority": 0,
     "once": false,
