@@ -1,0 +1,35 @@
+global:
+    location:
+      latitude: 60.4518
+      longitude: 22.2666
+    timezone: Europe/Helsinki
+    server: mosquitto
+actions:
+- type: mqtt-timer
+  name: terrace-lights
+  config:
+    topic: zigbee2mqtt/powerplug-terrace/set
+    schedule:
+      - payload: '{"state": "ON"}'
+        time: dusk
+      - payload: '{"state": "OFF"}'
+        time: "23:30"
+      - payload: '{"state": "ON"}'
+        time: "6:00"
+      - payload: '{"state": "OFF"}'
+        time: sunrise
+- type: mqtt-timer
+  name: toilet-night-tariff
+  config:
+    topic: zwave/thermostat-toilet/67/1/setpoint/1/set
+    schedule:
+      - payload:  '{"value": 24}'
+        time: "22:00"
+      - payload:  '{"value": 15}'
+        time: "7:00"
+- type: thermostat
+  config:
+    topic: zwave/thermostat-bathroom/67/0/setpoint/1
+    setback:
+      temperature: 17
+      delay: 3h
