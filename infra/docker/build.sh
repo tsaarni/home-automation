@@ -58,6 +58,8 @@
 set -euo pipefail
 
 INFRA_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+MONO_DIR="$(cd "$INFRA_DIR/.." && pwd)"
+export INFRA_DIR MONO_DIR
 NODE="mele"
 BUILDER_IMAGE="quay.io/podman/stable:latest"
 NAME=""
@@ -136,6 +138,10 @@ if [ "$LIST" -eq 1 ]; then
   exit 0
 fi
 [ -n "$NAME" ] || { usage; exit 2; }
+case "$NAME" in
+  automator) [ -d "$INFRA_DIR/docker/automator" ] || NAME="homeautomator" ;;
+  metrics)   [ -d "$INFRA_DIR/docker/metrics" ] || NAME="homemetrics" ;;
+esac
 [ -d "$INFRA_DIR/docker/$NAME" ] || die "unknown image: $NAME (try --list)"
 
 CONF="$INFRA_DIR/docker/$NAME/image.conf"

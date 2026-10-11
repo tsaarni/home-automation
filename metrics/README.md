@@ -41,8 +41,11 @@ python3 tests/httpserver.py
 Build the container image:
 
 ```bash
-podman build -t quay.io/tsaarni/home-metrics:latest .
-podman push quay.io/tsaarni/home-metrics:latest
+# In the cluster (loads image into containerd and restarts deployment):
+../infra/docker/build.sh homemetrics
+
+# Or manual local build:
+podman build -t quay.io/tsaarni/home-metrics:latest -f ../infra/docker/homemetrics/Dockerfile .
 ```
 
 The documentation for used APIs is available at following links:

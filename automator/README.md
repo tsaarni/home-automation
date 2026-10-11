@@ -211,14 +211,14 @@ scenarios, scheduler, API, restart/reconnect and the seed set.
 
 ## Deployment
 
-The image recipe, the Kubernetes manifests and the build script live in the infrastructure repo
-`~/hobby/home-infra` (`docker/automator/`, `manifests/automator.yaml`). One replica, one PVC
+The image recipe, the Kubernetes manifests and the build script live in `../infra`
+(`infra/docker/homeautomator/`, `infra/manifests/homeautomator.yaml`). One replica, one PVC
 (plain files, single writer), plain `Service`; exposure is a Cloudflare Tunnel route and there is
 no auth in the app.
 
 ```bash
-# from ~/hobby/home-infra: build on the cluster node, load the image, restart the Deployment
-docker/build.sh automator
+# from infra/: build on the cluster node, load the image, restart the Deployment
+docker/build.sh homeautomator
 docker/build.sh --list               # every image that can be built
 ```
 

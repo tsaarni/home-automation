@@ -1,6 +1,6 @@
 # home-webui
 
-A web UI for [`home-automator`](../home-automator) built around *what you want to do* —
+A web UI for [`home-automator`](../automator) built around *what you want to do* —
 "turn the terrace lights on until midnight", "why didn't the bathroom setback run?" — instead
 of around the stored documents.
 
@@ -65,7 +65,7 @@ VITE_USE_MOCKS=true pnpm dev
 ### A local automator instead of the cluster
 
 ```bash
-# in ../home-automator
+# in ../automator
 uv run python seed/install.py /tmp/automator
 DATA_DIR=/tmp/automator PORT=8099 MQTT_URL=none DRY_RUN=true TZ=Europe/Helsinki \
   LAT=60.17 LON=24.94 uv run python -m automator

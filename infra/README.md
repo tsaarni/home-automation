@@ -86,7 +86,7 @@ Each image has a small configuration file `docker/<name>/image.conf`:
 
 ```bash
 # docker/homeautomator/image.conf
-CONTEXT="$HOME/hobby/home-automator"                      # build context
+CONTEXT="$MONO_DIR/automator"                             # build context
 CONTEXT_FILES="pyproject.toml README.md src seed"         # files to pack
 TAG="quay.io/tsaarni/home-automator:latest"               # keep equal to the manifest image
 DEPLOYMENT="homeautomator"                                # restart after loading
@@ -99,14 +99,14 @@ k3s containerd socket), and the layer cache stays in `/var/lib/rancher/<name>-bu
 The manual equivalent, when you have ssh and sudo on the node:
 
 ```console
-podman build --tag quay.io/tsaarni/home-automator:latest -f docker/homeautomator/Dockerfile ~/hobby/home-automator
+podman build --tag quay.io/tsaarni/home-automator:latest -f docker/homeautomator/Dockerfile ../automator
 podman save quay.io/tsaarni/home-automator:latest | sudo k3s ctr images import -
 sudo k3s ctr images ls | grep home-automator
 ```
 
 ### home-automator
 
-The application source is in `~/hobby/home-automator`. This repo holds the image recipe
+The application source is in `../automator`. This directory holds the image recipe
 (`docker/homeautomator/`) and the manifest (`manifests/homeautomator.yaml`).
 
 ```console
@@ -125,7 +125,7 @@ Notes
 * The documents (devices, groups, rules) live on the PVC `homeautomator-data`, not in a
   ConfigMap. They are JSON files: `config.json`, `pending.json`, `events.jsonl`.
 * `/opt/seed` inside the image holds the seed documents and the installer. See
-  `~/hobby/home-automator/seed/README.md` for how they are extracted from the gateways.
+  `../automator/seed/README.md` for how they are extracted from the gateways.
 * The Deployment uses one replica and `strategy: Recreate`, because the service is a single
   writer of its files.
 * The image is loaded, not pulled, so `imagePullPolicy: IfNotPresent`. After a node reinstall,
