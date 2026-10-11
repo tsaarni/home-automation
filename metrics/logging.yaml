@@ -1,0 +1,17 @@
+version: 1
+root:
+  level: WARNING
+  handlers: [console]
+loggers:
+  app:
+    level: INFO
+    handlers: [console]
+    propagate: False
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: console-formatter
+formatters:
+  console-formatter:
+    format: "%(asctime)s %(name)s %(levelname)s: %(message)s"
+    datefmt: "%Y-%m-%dT%H:%M:%S%z"
