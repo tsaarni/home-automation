@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mosquitto
+spec:
+  selector:
+    matchLabels:
+      app: mosquitto
+  template:
+    metadata:
+      labels:
+        app: mosquitto
+    spec:
+      containers:
+      - name: mosquitto
+        # https://github.com/eclipse/mosquitto
+        # https://hub.docker.com/_/eclipse-mosquitto
+        image: eclipse-mosquitto:2.0.12-openssl
+        ports:
+        - containerPort: 1883
+        volumeMounts:
+          - name: mosquitto-config
+            mountPath: /mosquitto/config
+            readOnly: true
+      volumes:
+        - name: mosquitto-config
+          configMap:
+            name: mosquitto-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mosquitto-config
+data:
+  mosquitto.conf: |-
+    # https://github.com/eclipse/mosquitto/blob/master/mosquitto.conf
+    listener 1883
+
+    # Allow anonymous users to connect?
+    # If not, the password file should be created
+    allow_anonymous true
+
+    # The password file.
+    # Use the `mosquitto_passwd` utility.
+    # If TLS is not compiled, plaintext "username:password" lines bay be used
+    # password_file /mosquitto/config/passwd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mosquitto
+spec:
+  selector:
+    app: mosquitto
+  ports:
+  - name: mqtt
+    port: 1883
+    targetPort: 1883

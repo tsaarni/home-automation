@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: victoriametrics
+  labels:
+    app: victoriametrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: victoriametrics
+  template:
+    metadata:
+      labels:
+        app: victoriametrics
+    spec:
+      containers:
+        # https://github.com/VictoriaMetrics/VictoriaMetrics
+        # https://hub.docker.com/r/victoriametrics/victoria-metrics/tags
+        - name: victoriametrics
+          image: victoriametrics/victoria-metrics:v1.95.1
+          args:
+            - "-promscrape.config"
+            - "/config/prometheus.yaml"
+            - "-retentionPeriod=100y"
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /victoria-metrics-data
+              name: data
+          env:
+            - name: TZ
+              value: Europe/Helsinki
+          ports:
+            - containerPort: 8428
+      volumes:
+        - name: config
+          configMap:
+            name: victoriametrics-config
+            defaultMode: 0600
+        - name: data
+          hostPath:
+            path: /volumes/victoriametrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: victoriametrics
+spec:
+  selector:
+    app: victoriametrics
+  ports:
+    - port: 8428
+      targetPort: 8428
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: victoriametrics-config
+data:
+  prometheus.yaml: |
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets: []
+
+# error:
+#   cannot acquire lock on file "/victoria-metrics-data/flock.lock": resource temporarily unavailable
+# then run
+#   kubectl delete -f manifests/victoriametrics.yaml
+#   kubectl apply -f manifests/victoriametrics.yaml

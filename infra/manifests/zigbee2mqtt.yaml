@@ -1,0 +1,178 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zigbee2mqtt
+  labels:
+    app: zigbee2mqtt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zigbee2mqtt
+  template:
+    metadata:
+      labels:
+        app: zigbee2mqtt
+    spec:
+      containers:
+        # https://github.com/Koenkk/zigbee2mqtt/blob/master/docker/Dockerfile
+        # https://hub.docker.com/r/koenkk/zigbee2mqtt/
+        - name: zigbee2mqtt
+          image: koenkk/zigbee2mqtt:1.40.2
+          # command:
+          #   - "/bin/sleep"
+          # args:
+          #   - "9999"
+          securityContext:
+            runAsUser: 9999
+            runAsGroup: 20 # gid 20 == dialout
+            privileged: true # https://github.com/kubernetes/kubernetes/issues/5607
+          volumeMounts:
+            - mountPath: /app/data
+              name: data
+            - mountPath: /dev/zigbee
+              name: tty
+            - mountPath: /run/udev
+              name: udev
+              readOnly: true
+          env:
+            - name: TZ
+              value: Europe/Helsinki
+          ports:
+            - containerPort: 8080
+      initContainers:
+        - name: update-config
+          image: alpine:3.14
+          command:
+            - "/bin/sh"
+          args:
+            - "-c"
+            - "cp -Ha /app/data-readonly/* /app/secrets-readonly/* /app/data/; chown 9999 /app/data/*"
+          volumeMounts:
+            - mountPath: /app/data
+              name: data
+            - mountPath: /app/data-readonly
+              name: config
+      volumes:
+        - name: config
+          configMap:
+            name: zigbee2mqtt-config
+            defaultMode: 0600
+        - name: data
+          hostPath:
+            path: /volumes/zigbee2mqtt
+        - name: tty
+          hostPath:
+            path: /dev/ttyUSB0
+        - name: udev
+          hostPath:
+            path: /run/udev
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zigbee2mqtt-config
+data:
+  configuration.yaml: |
+    mqtt:
+      base_topic: zigbee2mqtt
+      server: mqtt://mosquitto
+      # user: username
+      # password: password
+    serial:
+      port: /dev/zigbee
+    devices: devices.yaml
+    groups: groups.yaml
+    advanced:
+      network_key: '!secret network_key'
+      log_rotation: false
+    #permit_join: true
+    permit_join: false
+    device_options:
+      temperature_precision: 2
+    frontend:
+      # Optional, default 8080
+      port: 8080
+      # Optional, default 0.0.0.0
+      host: 0.0.0.0
+      # Optional, enables authentication, disabled by default
+      #auth_token: your-secret-token
+  devices.yaml: |
+    '0x00158d00073a250d':
+      friendly_name: 'motion-agara-front'
+    '0x0017880106499504':
+      friendly_name: 'motion-philips-car'
+    '0x00158d00075bfd6f':
+      friendly_name: 'door-1-storage-street'
+      device_options:
+        temperature_calibration: -7
+    '0x00158d0007698bdc':
+      friendly_name: 'door-2-storage-car'
+      device_options:
+        temperature_calibration: -17
+    '0x00124b002397160b':
+      friendly_name: 'temperature-1-storage-street'
+    '0x00124b0023ad6b00':
+      friendly_name: 'temperature-2-storage-car'
+    '0x00124b0023b347ba':
+      friendly_name: 'motion-sonoff'
+    '0x00158d0007504d9a':
+      friendly_name: 'motion-agara-terrace'
+    '0x84fd27fffeae4d7d':
+      friendly_name: 'button-ikea'
+    '0x84fd27fffe728935':
+      friendly_name: 'signal-repeater-storage'
+    '0x00158d0007984f75':
+      friendly_name: 'temperature-3-emptyroom'
+    '0x00158d0007759bc4':
+      friendly_name: 'temperature-4'
+    '0x00158d000775bfff':
+      friendly_name: 'temperature-5'
+    '0xf0d1b800001bcc5c':
+      friendly_name: 'powerplug-terrace'
+    '0x00124b0023966555':
+      friendly_name: 'door-terrace'
+    '0x00158d000233356b':
+      friendly_name: 'button-car'
+    '0x00158d0007dfa780':
+      friendly_name: 'temperature-backyard'
+    '0x70b3d52b6000608d':
+      friendly_name: 'powerplug-1-kitchen'
+    '0x70b3d52b600060c9':
+      friendly_name: 'powerplug-2'
+    '0x00158d0007e08812':
+      friendly_name: 'temperature-6'
+    '0xf0d1b8be2408a4a7':
+      friendly_name: 'powerplug-car'
+    '0x0c4314fffee9d73c':
+      friendly_name: 'temperature-7-bedroom'
+    '0x00158d0008cebf80':
+      friendly_name: 'temperature-8-toilet'
+    '0x00158d0008cf2809':
+      friendly_name: 'temperature-9-bathroom'
+    '0x00158d0008cf11e1':
+      friendly_name: 'temperature-10-utilityroom'
+    '0x94deb8fffe41e6b6':
+      friendly_name: 'temperature-11-office'
+    '0x94deb8fffe41e75b':
+      friendly_name: 'temperature-12'
+    '0xa4c138c599816031':
+      friendly_name: 'powerplug-3-pm'
+    '0x94deb8fffe41e722':
+      friendly_name: 'temperature-13'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zigbee2mqtt
+spec:
+  selector:
+    app: zigbee2mqtt
+  ports:
+    - port: 80
+      targetPort: 8080
+
+# Error: Error while opening serialport 'Error: Error Resource temporarily unavailable Cannot lock port'
+# then run
+#    kubectl delete -f manifests/zigbee2mqtt.yaml
+#    kubectl apply -f manifests/zigbee2mqtt.yaml

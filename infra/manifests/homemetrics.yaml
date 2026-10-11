@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homemetrics
+spec:
+  selector:
+    matchLabels:
+      app: homemetrics
+  template:
+    metadata:
+      labels:
+        app: homemetrics
+    spec:
+      containers:
+      - name: homemetrics
+        image: quay.io/tsaarni/home-metrics:latest
+        env:
+          - name: TZ
+            value: Europe/Helsinki
+        volumeMounts:
+        - mountPath: /config
+          name: config
+      volumes:
+      - name: config
+        configMap:
+          name: homemetrics-config
