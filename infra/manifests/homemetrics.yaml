@@ -14,6 +14,7 @@ spec:
       containers:
       - name: homemetrics
         image: quay.io/tsaarni/home-metrics:latest
+        imagePullPolicy: IfNotPresent
         env:
           - name: TZ
             value: Europe/Helsinki

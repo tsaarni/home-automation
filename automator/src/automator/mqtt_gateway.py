@@ -157,7 +157,7 @@ class MqttGateway:
                 async with self._client_factory() as client:
                     self._client = client
                     for topic in self.service.settings.mqtt.topics:
-                        await client.subscribe(topic)
+                        await client.subscribe(topic, qos=1)
                     self._connected = True
                     delay = settings.reconnect_min
                     self.log.info("mqtt connected to %s:%s, subscribed %s", settings.host, settings.port, list(settings.topics))
@@ -191,7 +191,7 @@ class MqttGateway:
         client = self._client
         if client is None:
             raise RuntimeError("mqtt is not connected")
-        await client.publish(topic, text, retain=retain)
+        await client.publish(topic, text, retain=retain, qos=1)
         return {"topic": topic, "payload": text, "retain": retain}
 
     # ------------------------------------------------------------------- routing
@@ -248,6 +248,10 @@ class MqttGateway:
 
     async def handle_message(self, topic: str, payload: Any) -> list[tuple[str, str, Any]]:
         """Route one message into state; returns the (device, attr, value) triples that changed."""
+        parsed = parse_payload(payload_to_text(payload))
+        handled, changes = await self.service.commands.handle(topic, parsed)
+        if handled:
+            return changes
         routes = self.matching_routes(topic)
         if not routes:
             return []

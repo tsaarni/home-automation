@@ -1,30 +1,26 @@
-# Build and push: see ../README.md (commands run from the repository root)
-# Manual: podman build -f docker/homemetrics/Dockerfile -t quay.io/tsaarni/home-metrics:latest ~/hobby/home-metrics
-FROM python:3.14-slim
-
-LABEL org.opencontainers.image.title="home-metrics" \
-      org.opencontainers.image.description="Metrics scraper pushing to VictoriaMetrics" \
-      org.opencontainers.image.source="https://github.com/tsaarni/home-metrics"
-
+# syntax=docker/dockerfile:1
+FROM python:3.14-alpine3.23 AS base
+RUN apk add --no-cache tzdata \
+ && addgroup -g 10001 app \
+ && adduser -D -H -u 10001 -G app app
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-RUN apt-get update \
- && apt-get install --no-install-recommends -y tzdata ca-certificates \
- && rm -rf /var/lib/apt/lists/*
-
+    PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
+FROM base AS build
+COPY --from=ghcr.io/astral-sh/uv:0.13.0 /uv /usr/local/bin/uv
+ENV UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
+COPY pyproject.toml uv.lock README.md ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-install-project
 COPY src ./src
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-editable
+
+FROM base AS runtime
+COPY --from=build /app/.venv /app/.venv
 COPY logging.yaml ./
-RUN pip install .
-
-RUN useradd --create-home --uid 10001 metrics \
- && python -c "from homemetrics import __version__; print('homemetrics', __version__)"
-USER metrics
-
-ENTRYPOINT ["python", "-m", "homemetrics"]
+USER 10001:10001
+ENTRYPOINT ["homemetrics"]
 CMD ["--config", "/config/config.yaml"]

@@ -240,8 +240,7 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
   switch (run.outcome) {
     case "ran":
     case "manual": {
-      if (!run.writes.length)
-        return run.publishes.length ? "sent message" : "values already satisfied";
+      if (!run.writes.length) return run.publishes.length ? "sent message" : "values already satisfied";
       return run.writes
         .map((write) => {
           const thing = names.device(write.device);
@@ -252,6 +251,22 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
             write.previous === null || write.previous === undefined
               ? ""
               : ` (was ${names.value(write.device, write.attr, write.previous)})`;
+          if (
+            ["pending", "accepted", "confirmed", "reported", "failed", "unconfirmed"].includes(
+              write.status ?? "",
+            )
+          ) {
+            return writeSentence(
+              {
+                device: write.device ?? "",
+                attr: write.attr ?? "",
+                value: write.value,
+                status: write.status ?? "pending",
+                reason: write.reason,
+              },
+              names,
+            );
+          }
           if (write.status === "unchanged") return `${thing}${label} already ${value}`;
           if (write.status === "dry-run")
             return switchy

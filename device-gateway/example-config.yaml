@@ -1,0 +1,41 @@
+mqtt:
+  host: mosquitto
+  port: 1883
+  topic_prefix: home/device-gateway
+defaults:
+  shelly_poll_interval: 15s
+  http_timeout: 5s
+  command_ttl: 30s
+accounts:
+  melcloud-main:
+    username_env: MELCLOUD_USERNAME
+    password_env: MELCLOUD_PASSWORD
+devices:
+  plug-livingroom:
+    adapter: shelly-rpc
+    name: Living room plug
+    url: http://192.168.86.90
+    expected_device_id: shellyplugsg3-5432045cc35c
+  plug-storage-street:
+    adapter: shelly-rpc
+    name: Street side storage plug
+    url: http://192.168.86.133
+    expected_device_id: shellyoutdoorsg3-e4b063dac314
+  heater-storage-car:
+    adapter: shelly-rpc
+    name: Storage car heater
+    url: http://192.168.86.41
+    expected_device_id: shellyplus1pm-4855199d80c8
+  heater-storage-street:
+    adapter: shelly-rpc
+    name: Storage street heater
+    url: http://192.168.86.40
+    expected_device_id: shellyplus1pm-4855199bec80
+  heatpump:
+    adapter: melcloud-ata
+    name: Heat pump
+    account: melcloud-main
+    device_id: 210764 # inspected read-only on 2026-10-11
+    poll_interval: 5m
+    followup_interval: 60s
+    result_timeout: 5m

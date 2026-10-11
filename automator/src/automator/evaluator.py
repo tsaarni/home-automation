@@ -331,9 +331,18 @@ class Evaluator:
             if not pending:
                 break
             key, write = pending[0]
-            applied.add(key)
+            device = self.service.store.devices.get(write.device)
+            batch = [(key, write)]
+            if device and device.command:
+                # Only combine winners from this evaluation with compatible timer semantics.
+                batch = [(k, w) for k, w in pending if w.device == write.device and w.revert_after == write.revert_after]
+            applied.update(k for k, _ in batch)
             try:
-                await self.service.apply_write(write)  # the service records the outcome event
+                if device and device.command:
+                    async with self.service.critical():
+                        await self.service.commands.apply([w for _, w in batch])
+                else:
+                    await self.service.apply_write(write)  # the service records the outcome event
             except Exception as exc:  # noqa: BLE001
                 self.log.warning("write to %s.%s failed: %s", write.device, write.attr, exc)
                 self._event({"type": "write", "device": write.device, "attr": write.attr, "value": write.value, "rule": write.rule_id, "status": "error", "reason": str(exc)})

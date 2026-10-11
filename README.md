@@ -43,3 +43,6 @@ pnpm test
 pnpm build
 pnpm dev
 ```
+
+[Device gateway](device-gateway/README.md) connects opt-in automator devices to
+Shelly RPC and MELCloud, with independent reported state and correlated command results.

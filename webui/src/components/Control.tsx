@@ -8,9 +8,10 @@ type Kind = "switch" | "boolean" | "select" | "number" | "text";
 
 function kindOf(reading: Reading): Kind {
   if (reading.options && reading.options.length === 2 && reading.options.includes("ON")) return "switch";
-  if (typeof reading.value === "boolean" || reading.on === true) return "boolean";
+  if (reading.declaredType === "boolean" || typeof reading.value === "boolean" || reading.on === true)
+    return "boolean";
   if (reading.options?.length) return "select";
-  if (typeof reading.value === "number") return "number";
+  if (reading.declaredType === "number" || typeof reading.value === "number") return "number";
   return "text";
 }
 
@@ -81,6 +82,16 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
           >
             {reading.label}
           </span>
+          {reading.pending ? (
+            <Badge tone="warn">
+              {reading.pending.status}: {String(reading.pending.value)}
+            </Badge>
+          ) : null}
+          {reading.outcome ? (
+            <Badge tone="muted">
+              {reading.outcome === "reported" ? "reported by MELCloud" : reading.outcome}
+            </Badge>
+          ) : null}
           {!reading.known ? (
             <Badge tone="muted" title="No telemetry received">
               waiting

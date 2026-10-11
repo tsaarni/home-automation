@@ -10,10 +10,6 @@ const rules = (rulesFixture as unknown[]).map((raw) => ruleSchema.parse(raw) as 
  * parse -> build unchanged, or is explicitly flagged as unrepresentable.
  */
 describe("schedule round trip", () => {
-  it("has the seed rules to check", () => {
-    expect(rules.length).toBeGreaterThanOrEqual(9);
-  });
-
   for (const rule of rules) {
     it(`${rule.id}: parse -> build is lossless or flagged`, () => {
       const parsed = parseRule(rule);

@@ -20,7 +20,19 @@ export type Outcome =
   | "system";
 
 export const SKIP_REASONS = ["condition_false", "unknown_value", "rate_limited", "no_curve_input"] as const;
-export const WRITE_STATUSES = ["applied", "unchanged", "dry-run", "skipped", "error"] as const;
+export const WRITE_STATUSES = [
+  "applied",
+  "unchanged",
+  "dry-run",
+  "skipped",
+  "error",
+  "pending",
+  "accepted",
+  "confirmed",
+  "reported",
+  "failed",
+  "unconfirmed",
+] as const;
 export const WRITE_REASONS = [
   "device_locked",
   "no_value_to_restore",
@@ -44,6 +56,7 @@ export function rowOf(event: Event): Outcome {
       return "failed";
     case "rule_once":
       return "consumed";
+    case "command_result":
     case "write":
       return event.rule ? "ran" : "manual";
     case "state":
@@ -135,6 +148,18 @@ export function writeSentence(result: WriteResult, names: Names): string {
   const before = names.value(result.device, result.attr, result.previous);
   const was = result.previous === undefined || result.previous === null ? "" : ` (was ${before})`;
   switch (result.status) {
+    case "pending":
+      return `${target}: request pending; waiting for device feedback`;
+    case "accepted":
+      return `${target}: API accepted the request; waiting for reported state`;
+    case "reported":
+      return `${target}: reported by MELCloud`;
+    case "confirmed":
+      return `${target}: matching state observed on the device`;
+    case "failed":
+      return `${target}: request failed: ${humanizeWords(result.reason ?? "device rejection")}`;
+    case "unconfirmed":
+      return `${target}: outcome uncertain: ${humanizeWords(result.reason ?? "no matching readback")}`;
     case "applied":
       return switchy ? `turned ${target} ${after}${was}` : `${target} set to ${after}${was}`;
     case "unchanged":

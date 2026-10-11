@@ -58,6 +58,8 @@ class Scheduler:
         """One scheduler round: reload config, fire timers, fire due schedules."""
         if self.service.reload_config_if_changed():
             self.log.info("config.json reloaded from disk")
+        async with self.service.critical():
+            self.service.commands.expire()
         self._sync(now)
         for timer in self.service.store.due_timers(now):
             try:

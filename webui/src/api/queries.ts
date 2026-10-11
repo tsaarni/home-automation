@@ -42,7 +42,7 @@ export function useStateSnapshot() {
 }
 
 export function useDevices() {
-  return useQuery({ queryKey: keys.devices, queryFn: api.devices, refetchInterval: 60000 });
+  return useQuery({ queryKey: keys.devices, queryFn: api.devices, refetchInterval: 2000 });
 }
 
 export function useGroups() {
@@ -120,7 +120,11 @@ export function useSetValue() {
     mutationFn: async ({ target, body }: WriteVars): Promise<WriteResult[]> =>
       target.kind === "device" ? api.setDevice(target.id, body) : api.setGroup(target.id, body),
     onMutate: async ({ target, body }) => {
-      if (target.kind !== "device") return { previous: undefined as StateSnapshot | undefined };
+      const configured = queryClient
+        .getQueryData<Device[]>(keys.devices)
+        ?.find((device) => device.id === target.id);
+      if (target.kind !== "device" || configured?.command)
+        return { previous: undefined as StateSnapshot | undefined };
       await queryClient.cancelQueries({ queryKey: keys.state });
       const previous = queryClient.getQueryData<StateSnapshot>(keys.state);
       if (previous) {
@@ -152,10 +156,15 @@ export function useSetValue() {
         notify("info", "dry run: nothing was sent to the device");
         return;
       }
+      if (results.some((result) => result.status === "pending")) {
+        notify("info", "request pending; waiting for device feedback");
+        return;
+      }
       if (body.revert_after) notify("ok", `done — it goes back ${durationWords(body.revert_after)} from now`);
       else notify("ok", "done");
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: keys.devices });
       queryClient.invalidateQueries({ queryKey: keys.state });
       queryClient.invalidateQueries({ queryKey: keys.timers });
       queryClient.invalidateQueries({ queryKey: keys.events });

@@ -123,7 +123,7 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
     # ------------------------------------------------------------------ devices
 
     def device_payload(device: Device) -> dict[str, Any]:
-        return {**device.doc(), "state": svc.state.device_snapshot(device.id), "referenced_by": rules_referencing_device(svc.store.rules, device.id)}
+        return {**device.doc(), "state": svc.state.device_snapshot(device.id), **svc.commands.describe(device.id), "referenced_by": rules_referencing_device(svc.store.rules, device.id)}
 
     @app.get("/api/v1/devices", tags=["devices"])
     async def list_devices() -> list[dict[str, Any]]:

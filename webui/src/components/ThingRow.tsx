@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNames, useTime } from "@/api/queries";
 import type { Reading, Thing } from "@/home/derive";
+import { ClimatePatch } from "./ClimatePatch";
 import { Control } from "./Control";
 import { ProvenancePanel } from "./ProvenancePanel";
 import { Badge, Button, Icon, Muted, Row, Stack, Tabular } from "./primitives";
@@ -44,7 +45,15 @@ export function ThingRow({ thing }: { thing: Thing }) {
         border: "1px solid var(--md-sys-color-outline-variant)",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "10px",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div
             style={{
@@ -66,6 +75,7 @@ export function ThingRow({ thing }: { thing: Thing }) {
               <span style={{ fontWeight: 600, fontSize: "15px", color: "var(--md-sys-color-on-surface)" }}>
                 {thing.name}
               </span>
+              {thing.gateway && thing.available === false ? <Badge tone="warn">unavailable</Badge> : null}
               {thing.locked ? <Badge tone="warn">locked</Badge> : null}
               {thing.waiting ? <Badge tone="muted">waiting for telemetry</Badge> : null}
             </div>
@@ -97,7 +107,13 @@ export function ThingRow({ thing }: { thing: Thing }) {
                 fontSize: "13px",
               }}
             >
-              <span style={{ fontSize: "11px", color: "var(--md-sys-color-on-surface-variant)", textTransform: "uppercase" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "var(--md-sys-color-on-surface-variant)",
+                  textTransform: "uppercase",
+                }}
+              >
                 {reading.label}
               </span>
               <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
@@ -114,16 +130,22 @@ export function ThingRow({ thing }: { thing: Thing }) {
       </div>
 
       {thing.controls.length > 0 ? (
-        <Stack gap={8} style={{ paddingTop: "6px", borderTop: "1px dashed var(--md-sys-color-outline-variant)" }}>
+        <Stack
+          gap={8}
+          style={{ paddingTop: "6px", borderTop: "1px dashed var(--md-sys-color-outline-variant)" }}
+        >
+          {thing.gateway &&
+          thing.controls.some((r) => r.attr === "mode") &&
+          thing.controls.some((r) => r.attr === "setpoint") ? (
+            <ClimatePatch thing={thing} />
+          ) : null}
           {thing.controls.map((reading) => (
             <Control key={reading.attr} reading={reading} heading={thing.name} />
           ))}
         </Stack>
       ) : null}
 
-      {provenance ? (
-        <ProvenancePanel reading={provenance} onClose={() => setProvenance(null)} />
-      ) : null}
+      {provenance ? <ProvenancePanel reading={provenance} onClose={() => setProvenance(null)} /> : null}
     </div>
   );
 }

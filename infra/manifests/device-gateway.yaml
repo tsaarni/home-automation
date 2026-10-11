@@ -1,0 +1,71 @@
+# Generate the ConfigMap from the validated local configuration:
+# kubectl create configmap device-gateway-config --from-file=config.yaml=device-gateway/config.yaml --dry-run=client -o yaml
+# Review/apply it before this Deployment. Create Secret device-gateway-melcloud
+# with keys username/password from the existing account; never commit credentials.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: device-gateway
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: device-gateway
+  template:
+    metadata:
+      labels:
+        app: device-gateway
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: device-gateway
+          image: quay.io/tsaarni/home-device-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: health
+              containerPort: 8080
+          env:
+            - name: MELCLOUD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: device-gateway-melcloud
+                  key: username
+            - name: MELCLOUD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: device-gateway-melcloud
+                  key: password
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: device-gateway-config

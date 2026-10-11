@@ -1,0 +1,101 @@
+{
+  "heater-storage-car": {
+    "identity": {
+      "id": "shellyplus1pm-4855199d80c8",
+      "model": "SNSW-001P16EU",
+      "ver": "1.7.5"
+    },
+    "metadata": {
+      "protection_errors": []
+    },
+    "values": {
+      "current": 0.0,
+      "device_temperature": 15.3,
+      "energy": 497.61900099999997,
+      "power": 0.0,
+      "state": false,
+      "voltage": 229.7
+    }
+  },
+  "heater-storage-street": {
+    "identity": {
+      "id": "shellyplus1pm-4855199bec80",
+      "model": "SNSW-001P16EU",
+      "ver": "1.7.5"
+    },
+    "metadata": {
+      "protection_errors": []
+    },
+    "values": {
+      "current": 0.0,
+      "device_temperature": 16.1,
+      "energy": 523.094047,
+      "power": 0.0,
+      "state": false,
+      "voltage": 229.4
+    }
+  },
+  "heatpump": {
+    "identity": {
+      "BuildingID": 141129,
+      "Device": {
+        "DeviceType": 0,
+        "MaxTempCoolDry": 31.0,
+        "MaxTempHeat": 31.0,
+        "MinTempCoolDry": 16.0,
+        "MinTempHeat": 10.0,
+        "TemperatureIncrement": 0.5
+      },
+      "DeviceID": 210764
+    },
+    "metadata": {
+      "last_communication": "2026-10-11T17:58:00.036000+00:00",
+      "pending_command": false
+    },
+    "values": {
+      "fan_speed": 0,
+      "mode": "heat",
+      "power": true,
+      "setpoint": 22.0,
+      "temperature": 23.0,
+      "vane_horizontal": 12,
+      "vane_vertical": 5
+    }
+  },
+  "plug-livingroom": {
+    "identity": {
+      "id": "shellyplugsg3-5432045cc35c",
+      "model": "S3PL-00112EU",
+      "ver": "2.0.1"
+    },
+    "metadata": {
+      "protection_errors": []
+    },
+    "values": {
+      "current": 1.127,
+      "device_temperature": 32.9,
+      "energy": 582.895666,
+      "power": 240.4,
+      "state": true,
+      "voltage": 228.3
+    }
+  },
+  "plug-storage-street": {
+    "identity": {
+      "id": "shellyoutdoorsg3-e4b063dac314",
+      "model": "S3PL-20112EU",
+      "ver": "2.0.0"
+    },
+    "metadata": {
+      "protection_errors": []
+    },
+    "values": {
+      "current": 0.0,
+      "device_temperature": 26.4,
+      "energy": 5.789911,
+      "power": 0.0,
+      "state": false,
+      "voltage": 229.6
+    }
+  }
+}

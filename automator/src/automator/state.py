@@ -74,6 +74,12 @@ class StateStore:
         self._values[key] = Value(value=value, ts=ts, source=source, seq=self._seq)
         return True, previous
 
+    def refresh(self, device: str, attr: str, value: Any, ts: datetime, source: str) -> None:
+        """Refresh an unchanged gateway observation without incrementing its change sequence."""
+        previous = self.get(device, attr)
+        if previous is not None:
+            self._values[(device, attr)] = Value(value, ts, source, previous.seq)
+
     def snapshot(self) -> dict[str, dict[str, dict[str, Any]]]:
         result: dict[str, dict[str, dict[str, Any]]] = {}
         for (device, attr), value in self._values.items():

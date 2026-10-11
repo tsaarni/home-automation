@@ -42,6 +42,17 @@ export const deviceSchema = z
     description: z.string().nullish(),
     locked: z.boolean().default(false),
     attributes: z.record(z.string(), attributeSchema),
+    command: z
+      .object({ topic: z.string(), state_topic: z.string(), result_topic: z.string() })
+      .loose()
+      .nullish(),
+    pending: z
+      .record(z.string(), z.object({ request_id: z.string(), value: z.unknown(), status: z.string() }))
+      .optional(),
+    availability: z.object({ available: z.boolean(), reason: z.string().nullish() }).loose().optional(),
+    command_results: z
+      .record(z.string(), z.object({ status: z.string(), reason: z.string().nullish() }).loose())
+      .optional(),
     state: z.record(z.string(), stateValueSchema).default({}),
     referenced_by: z.array(z.string()).default([]),
   })

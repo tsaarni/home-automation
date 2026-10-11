@@ -75,6 +75,7 @@ export function buildRuns(events: Event[], windowMs = GROUP_WINDOW_MS): Run[] {
       case "rule_fire":
         open({ ts: event.ts, rule: event.rule ?? null, event, outcome: "ran" });
         break;
+      case "command_result":
       case "write":
         if (!attach(event, "writes")) {
           open({

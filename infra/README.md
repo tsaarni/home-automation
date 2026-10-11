@@ -57,6 +57,9 @@ kubectl get nodes
 # homemetrics
 kubectl create configmap homemetrics-config --from-file=secrets/homemetrics/config.yaml --dry-run=client -o yaml | kubectl apply -f -
 
+# device gateway: local device inventory (ignored by Git)
+kubectl apply -f secrets/device-gateway-config.yaml
+
 # homeautomator: no ConfigMap. The documents live on the PVC homeautomator-data.
 # The old homeautomator-config ConfigMap was removed, see legacy/homeautomator-config.yaml.
 
@@ -143,3 +146,8 @@ kubectl exec deployment/homeautomator -- tar zvcf - /data > backup/$BACKUP_TIMES
 ## VictoriaMetrics
 
 - MetricsQL language reference https://github.com/VictoriaMetrics/VictoriaMetrics/wiki/MetricsQL
+
+The optional [device gateway](../device-gateway/README.md) uses
+`manifests/device-gateway.yaml`, a validated `device-gateway-config` ConfigMap and
+`device-gateway-melcloud` Secret. One Recreate replica consumes commands. Generate
+and review automator bindings before installation; existing metrics remain separate.

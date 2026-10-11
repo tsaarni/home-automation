@@ -39,6 +39,7 @@ CATEGORY_KINDS: dict[str, set[str]] = {
         "rule_error",
         "rule_once",
         "write",
+        "command_result",
         "schedule",
         "conflict",
         "mqtt_value_error",

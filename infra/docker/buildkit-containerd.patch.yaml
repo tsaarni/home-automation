@@ -1,0 +1,49 @@
+spec:
+  template:
+    spec:
+      hostPID: true
+      containers:
+      - name: buildkitd
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - |
+          mkdir -p "$TMPDIR"
+          printf '[worker.containerd]\nnamespace = "k8s.io"\n' > "$TMPDIR/buildkitd.toml"
+          exec buildkitd --config "$TMPDIR/buildkitd.toml" --otel-socket-path "$TMPDIR/otel-grpc.sock" \
+            --root /var/lib/homeautomation/buildkit-containerd \
+            --oci-worker=false --containerd-worker=true \
+            --containerd-worker-addr=/run/k3s/containerd/containerd.sock \
+            --containerd-worker-net=host --containerd-max-parallelism=2
+        env:
+        - name: TMPDIR
+          value: /var/lib/homeautomation/buildkit-containerd/tmp
+        volumeMounts:
+        - name: containerd-socket
+          mountPath: /run/k3s/containerd/containerd.sock
+        - name: containerd-state
+          mountPath: /var/lib/rancher/k3s/agent/containerd
+          mountPropagation: HostToContainer
+        - name: containerd-buildkit
+          mountPath: /var/lib/homeautomation/buildkit-containerd
+          mountPropagation: Bidirectional
+        - name: containerd-io
+          mountPath: /run/containerd
+      volumes:
+      - name: containerd-socket
+        hostPath:
+          path: /run/k3s/containerd/containerd.sock
+          type: Socket
+      - name: containerd-state
+        hostPath:
+          path: /var/lib/rancher/k3s/agent/containerd
+          type: Directory
+      - name: containerd-buildkit
+        hostPath:
+          path: /var/lib/homeautomation/buildkit-containerd
+          type: DirectoryOrCreate
+      - name: containerd-io
+        hostPath:
+          path: /run/containerd
+          type: DirectoryOrCreate

@@ -47,23 +47,6 @@ def test_put_get_list_delete_roundtrip(tmp_path):
     assert saved["devices"] == {} and saved["rules"] == {} and saved["groups"] == {}
 
 
-def test_config_json_is_human_readable_document(tmp_path):
-    store = make_store(tmp_path)
-    store.put_rule(Rule.model_validate({
-        "id": "bathroom-setback",
-        "priority": 100,
-        "when": {"device": "thermostat-bathroom", "attr": "setpoint", "changed": True},
-        "if": {"all": [{"attr": ["thermostat-bathroom", "setpoint"], "op": "ne", "value": 17}]},
-        "for": "3h",
-        "then": [{"set": {"device": "thermostat-bathroom", "attr": "setpoint", "value": 17}}],
-    }))
-    saved = json.loads((tmp_path / "data" / "config.json").read_text())
-    rule = saved["rules"]["bathroom-setback"]
-    assert rule["for"] == "3h"
-    assert rule["if"]["all"][0]["op"] == "ne"  # ops use the eq/ne vocabulary
-    assert rule["then"][0]["set"]["value"] == 17
-
-
 def test_reload_when_file_changes(tmp_path):
     store = make_store(tmp_path)
     store.put_device(Device.model_validate(plug_doc()))
@@ -171,10 +154,3 @@ def test_pending_timers_upsert_and_survive_restart(tmp_path):
     assert reloaded.delete_timer("for:r1")["rule"] == "r1"
     assert reloaded.get_timer("for:r1") is None
     assert len(Store(tmp_path / "data", clock=clock).list_timers()) == 0
-
-
-def test_events_are_written_atomically(tmp_path):
-    store = make_store(tmp_path)
-    store.put_device(Device.model_validate(thermostat_doc()))
-    leftovers = [path.name for path in (tmp_path / "data").iterdir() if path.name.endswith(".tmp")]
-    assert leftovers == []

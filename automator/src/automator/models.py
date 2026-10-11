@@ -173,6 +173,25 @@ class Attribute(Doc):
         return self.doc()
 
 
+class CommandBinding(Doc):
+    """Opt-in correlated patch transport; state is reported independently."""
+
+    topic: str = Field(min_length=1)
+    result_topic: str = Field(min_length=1)
+    state_topic: str = Field(min_length=1)
+    availability_topic: str = Field(min_length=1)
+    service_availability_topic: str | None = None
+    expiry: Duration = Field(default=timedelta(seconds=30))
+    result_timeout: Duration = Field(default=timedelta(minutes=5))
+    stale_after: Duration = Field(default=timedelta(minutes=10))
+
+    @model_validator(mode="after")
+    def positive(self):
+        if any(value.total_seconds() <= 0 for value in (self.expiry, self.result_timeout, self.stale_after)):
+            raise ValueError("command intervals must be positive")
+        return self
+
+
 class Device(Doc):
     """A thing with attributes, bound to MQTT topics."""
 
@@ -181,6 +200,15 @@ class Device(Doc):
     description: str | None = None
     locked: bool = False
     attributes: dict[str, Attribute] = Field(min_length=1)
+    command: CommandBinding | None = None
+
+    @model_validator(mode="after")
+    def shared_transport(self):
+        if self.command:
+            for attribute in self.attributes.values():
+                if attribute.write and (attribute.write.topic != self.command.topic or attribute.write.retain):
+                    raise ValueError("gateway writable attributes must use the shared non-retained command topic")
+        return self
 
     @field_validator("attributes")
     @classmethod

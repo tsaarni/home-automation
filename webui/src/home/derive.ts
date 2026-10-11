@@ -34,6 +34,9 @@ export interface Reading {
   /** schedules that write this attribute */
   schedules: string[];
   isControl: boolean;
+  pending?: { request_id: string; value: unknown; status: string };
+  outcome?: string;
+  declaredType?: string;
 }
 
 export interface Thing {
@@ -42,6 +45,8 @@ export interface Thing {
   room: string;
   kind: ThingKind;
   locked: boolean;
+  gateway?: boolean;
+  available?: boolean;
   readings: Reading[];
   primary: Reading[];
   controls: Reading[];
@@ -151,6 +156,9 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
         options: spec.enum ?? undefined,
         schedules: writersByAttribute.get(`${device.id}\u0000${attr}`) ?? [],
         isControl,
+        pending: device.pending?.[attr],
+        outcome: device.command_results?.[attr]?.status,
+        declaredType: spec.type,
       });
     }
 
@@ -184,6 +192,8 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
       room: meta?.room ?? roomOf(device.id),
       kind: kindOf(device.id),
       locked: device.locked,
+      gateway: Boolean(device.command),
+      available: device.availability?.available,
       readings,
       primary,
       controls,

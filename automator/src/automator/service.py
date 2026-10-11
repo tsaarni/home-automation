@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from typing import Any, Iterator
 
 from . import __version__
+from .command_transport import CommandTransport
 from .config import Settings
 from .evaluator import Evaluator, Write
 from .mqtt_gateway import MqttGateway, NullGateway
@@ -82,6 +83,7 @@ class Service:
             events_memory=self.settings.events_memory,
         )
         self.state = StateStore()
+        self.commands = CommandTransport(self)
         self.evaluator = Evaluator(self)
         self.scheduler = Scheduler(self)
         if gateway is None:
@@ -138,6 +140,7 @@ class Service:
         self._started = True
         self.started_at = self.clock()
         self.store.load()
+        self.commands.recover_audit()
         self.evaluator.rebuild_index()
         warnings = self.settings.warnings()
         for warning in warnings:
@@ -263,10 +266,17 @@ class Service:
             value = attribute.coerce(write.value, for_write=True)
         except ValueError as exc:
             return {**result, "status": "error", "reason": str(exc)}
+        if device.command and attribute.write is None:
+            return {**result, "status": "error", "reason": "read_only"}
+        if device.command:
+            self.commands.expire()
         current = self.state.get(write.device, write.attr)
         previous = current.value if current is not None else None
         result = {**result, "value": value, "previous": previous}
-        if current is not None and values_equal(previous, value):
+        intent = self.commands.intent(write.device, write.attr) if device.command else None
+        if intent is not None and values_equal(intent["value"], value) and intent["revert_after"] == write.revert_after:
+            return {**result, "status": "pending", "request_id": intent["request_id"]}
+        if intent is None and current is not None and values_equal(previous, value):
             return {**result, "status": "unchanged"}
         topic = None
         payload = None
@@ -283,6 +293,9 @@ class Service:
             return await self._apply_write(write, dry_run=dry_run)
 
     async def _apply_write(self, write: Write, *, dry_run: bool | None = None) -> dict[str, Any]:
+        device = self.store.devices.get(write.device)
+        if device and device.command:
+            return (await self.commands.apply([write], dry_run=dry_run))[0]
         dry = self.dry_run if dry_run is None else dry_run
         result = self.resolve_write(write)
         status = result["status"]
@@ -346,6 +359,7 @@ class Service:
                 "attr": write.attr,
                 "value": value,
                 "has_value": has_value,
+                "request_id": result.get("request_id"),
                 "overridden_value": result.get("value"),
                 "rule": write.rule_id,
                 "created_at": self.clock(),
@@ -376,6 +390,9 @@ class Service:
         """POST /devices/{id}/set: one write per attribute, all under one lock."""
         results = []
         async with self.critical():
+            device = self.store.devices.get(device_id)
+            if device and device.command:
+                return await self.commands.apply([Write(device=device_id, attr=attr, value=value, rule_id=None, revert_after=revert_after, source=source) for attr, value in values.items()])
             for attr, value in values.items():
                 write = Write(device=device_id, attr=attr, value=value, rule_id=None, revert_after=revert_after, source=source)
                 results.append(await self._apply_write(write))
@@ -396,6 +413,10 @@ class Service:
         results = []
         async with self.critical():
             for member in group.members:
+                device = self.store.devices.get(member)
+                if device and device.command:
+                    results.extend(await self.commands.apply([Write(device=member, attr=attr, value=value, rule_id=None, revert_after=revert_after, source=source) for attr, value in values.items()]))
+                    continue
                 for attr, value in values.items():
                     write = Write(device=member, attr=attr, value=value, rule_id=None, revert_after=revert_after, source=source)
                     results.append(await self._apply_write(write))
