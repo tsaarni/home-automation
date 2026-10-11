@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>home-automator</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { color-scheme: light dark; --bg:#f7f7f8; --fg:#111; --muted:#666; --line:#d8d8dc; --card:#fff; --accent:#0b6bcb; --warn:#b45309; --bad:#b00020; --ok:#0a7f3f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8e8ea; --muted:#9aa0a6; --line:#2c3038; --card:#1b1e24; --accent:#62a8ff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+  header { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; }
+  .status { display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+  .status b { color:var(--fg); font-weight:600; }
+  nav { display:flex; gap:6px; padding:10px 16px 0; }
+  nav button { border:1px solid var(--line); background:var(--card); color:var(--fg); padding:6px 12px; border-radius:6px 6px 0 0; cursor:pointer; }
+  nav button.active { border-bottom-color:var(--card); background:var(--accent); color:#fff; border-color:var(--accent); }
+  main { padding:0 16px 40px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:0 6px 6px 6px; padding:14px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:16px 0 6px; }
+  h2:first-child { margin-top:0; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  input, select, textarea, button { font:inherit; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:5px; padding:4px 7px; }
+  button { background:var(--card); cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { color:var(--bad); }
+  .value { font-variant-numeric:tabular-nums; font-weight:600; }
+  .muted { color:var(--muted); font-size:12px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .split { display:grid; grid-template-columns:minmax(240px,320px) 1fr; gap:14px; align-items:start; }
+  ul.rules { list-style:none; margin:0; padding:0; max-height:70vh; overflow:auto; }
+  ul.rules li { padding:7px 8px; border:1px solid transparent; border-bottom:1px solid var(--line); cursor:pointer; border-radius:5px; }
+  ul.rules li:hover { background:var(--bg); }
+  ul.rules li.selected { border-color:var(--accent); background:var(--bg); }
+  ul.rules li.disabled { opacity:.55; }
+  .pill { display:inline-block; font-size:11px; padding:1px 6px; border-radius:9px; border:1px solid var(--line); color:var(--muted); }
+  .pill.on { color:var(--ok); border-color:var(--ok); }
+  .pill.off { color:var(--bad); border-color:var(--bad); }
+  textarea { width:100%; min-height:280px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px; overflow:auto; max-height:280px; font-size:12px; }
+  .error { color:var(--bad); white-space:pre-wrap; }
+  .ok { color:var(--ok); }
+  @media (max-width: 760px) { .split { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>home-automator</h1>
+  <div class="status" id="status">loading...</div>
+  <div style="margin-left:auto"><button id="refresh">Refresh</button></div>
+</header>
+<nav>
+  <button data-tab="state" class="active">State</button>
+  <button data-tab="rules">Rules</button>
+  <button data-tab="events">Events</button>
+</nav>
+<main>
+  <section id="tab-state">
+    <p class="muted" id="state-notice">Changes go through the same path as rules: audited, limit-checked, and reversible with "For".</p>
+    <h2>Groups</h2>
+    <table><thead><tr><th>Group</th><th>Members</th><th>Attribute</th><th>Value</th><th>For</th><th></th></tr></thead><tbody id="group-rows"></tbody></table>
+    <h2>Devices</h2>
+    <table>
+      <thead><tr><th>Device</th><th>Attribute</th><th>Value</th><th>Updated</th><th>Set to</th><th>For</th><th></th></tr></thead>
+      <tbody id="state-rows"></tbody>
+    </table>
+  </section>
+
+  <section id="tab-rules" hidden>
+    <div class="row">
+      <button id="rule-new">New rule</button>
+      <span class="muted" id="rule-hint">Pick a rule to edit; PUT replaces the whole document.</span>
+    </div>
+    <div class="split" style="margin-top:10px">
+      <ul class="rules" id="rule-list"></ul>
+      <div>
+        <textarea id="rule-json" spellcheck="false"></textarea>
+        <div class="row">
+          <button class="primary" id="rule-save">Save</button>
+          <button id="rule-test">Test (dry run)</button>
+          <button id="rule-toggle">Enable / disable</button>
+          <button class="danger" id="rule-delete">Delete</button>
+        </div>
+        <pre id="rule-result">no test run yet</pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-events" hidden>
+    <div class="row">
+      <label>rule <input id="event-rule" placeholder="rule id"></label>
+      <label>type <input id="event-kind" placeholder="state, write, rule_fire"></label>
+      <label>limit <input id="event-limit" size="5" value="100"></label>
+      <button id="event-refresh">Refresh</button>
+      <label class="muted"><input type="checkbox" id="event-auto" checked> auto</label>
+    </div>
+    <table>
+      <thead><tr><th>When</th><th>Type</th><th>Rule</th><th>Target</th><th>Value</th><th>Status</th></tr></thead>
+      <tbody id="event-rows"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+var state = { devices: [], groups: [], rules: [], selectedRule: null, tab: 'state' };
+
+function el(id) { return document.getElementById(id); }
+
+function api(path, options) {
+  return fetch(path, options).then(function (response) {
+    return response.text().then(function (text) {
+      var body = null;
+      try { body = text ? JSON.parse(text) : null; } catch (err) { body = text; }
+      if (!response.ok) {
+        var detail = body && body.detail ? body.detail : body;
+        if (Array.isArray(detail)) { detail = detail.join('\n'); }
+        if (detail && typeof detail === 'object') { detail = JSON.stringify(detail); }
+        throw new Error(path + ': HTTP ' + response.status + ' ' + (detail || ''));
+      }
+      return body;
+    });
+  });
+}
+
+function post(path, body) {
+  return api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+}
+
+function put(path, body) {
+  return api(path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+}
+
+function show(target, text, isError) {
+  var node = el(target);
+  node.className = isError ? 'error' : 'ok';
+  node.textContent = text;
+}
+
+function ago(ts) {
+  if (!ts) { return ''; }
+  var seconds = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
+  if (seconds < 60) { return seconds + 's ago'; }
+  if (seconds < 3600) { return Math.round(seconds / 60) + 'm ago'; }
+  if (seconds < 86400) { return Math.round(seconds / 3600) + 'h ago'; }
+  return Math.round(seconds / 86400) + 'd ago';
+}
+
+function fmt(value) {
+  if (value === null || value === undefined) { return '-'; }
+  if (typeof value === 'object') { return JSON.stringify(value); }
+  return String(value);
+}
+
+function loadStatus() {
+  return api('/readyz').then(function (status) {
+    var pills = [];
+    pills.push('<span><b>' + status.version + '</b></span>');
+    pills.push('<span>mqtt <b class="' + (status.mqtt_connected ? 'ok' : 'error') + '">' + (status.mqtt_enabled ? (status.mqtt_connected ? 'up' : 'down') : 'off') + '</b></span>');
+    pills.push('<span>devices <b>' + status.devices + '</b></span>');
+    pills.push('<span>rules <b>' + status.rules + '</b></span>');
+    pills.push('<span>timers <b>' + status.pending_timers + '</b></span>');
+    pills.push('<span>tz <b>' + status.timezone + '</b></span>');
+    if (status.dry_run) { pills.push('<span class="error">DRY RUN</span>'); }
+    (status.warnings || []).forEach(function (warning) { pills.push('<span class="error">' + warning + '</span>'); });
+    el('status').innerHTML = pills.join('');
+  }).catch(function (error) {
+    el('status').innerHTML = '<span class="error">' + error.message + '</span>';
+  });
+}
+
+function valueInput(device, attr, spec) {
+  var input = document.createElement('input');
+  input.size = 6;
+  input.id = 'input-' + device + '-' + attr;
+  if (spec.type === 'number') { input.type = 'number'; input.step = 'any'; }
+  else if (spec.type === 'boolean') { input.type = 'checkbox'; }
+  return input;
+}
+
+function readInput(device, attr, spec) {
+  var input = el('input-' + device + '-' + attr);
+  if (spec.type === 'number') { return input.value === '' ? null : Number(input.value); }
+  if (spec.type === 'boolean') { return input.checked; }
+  return input.value;
+}
+
+function fillInput(device, attr, spec, current) {
+  var input = el('input-' + device + '-' + attr);
+  if (spec.type === 'boolean') { input.checked = current === true; }
+  else if (document.activeElement !== input) { input.value = current === undefined ? '' : current; }
+}
+
+function renderState() {
+  var rows = el('state-rows');
+  rows.innerHTML = '';
+  state.devices.forEach(function (device) {
+    var attrs = Object.keys(device.attributes || {});
+    attrs.forEach(function (attr) {
+      var spec = device.attributes[attr];
+      var current = device.state && device.state[attr] ? device.state[attr] : null;
+      var tr = document.createElement('tr');
+
+      var nameCell = document.createElement('td');
+      nameCell.innerHTML = '<b>' + device.id + '</b>' + (device.locked ? ' <span class="pill off">locked</span>' : '') + (spec.write ? '' : ' <span class="pill">read-only</span>');
+      tr.appendChild(nameCell);
+
+      var attrCell = document.createElement('td');
+      attrCell.innerHTML = attr + (spec.unit ? ' <span class="muted">' + spec.unit + '</span>' : '');
+      tr.appendChild(attrCell);
+
+      var valueCell = document.createElement('td');
+      valueCell.className = 'value';
+      valueCell.textContent = current ? fmt(current.value) : '-';
+      tr.appendChild(valueCell);
+
+      var tsCell = document.createElement('td');
+      tsCell.className = 'muted';
+      tsCell.textContent = current ? ago(current.ts) : 'unknown';
+      tr.appendChild(tsCell);
+
+      var setCell = document.createElement('td');
+      setCell.appendChild(valueInput(device.id, attr, spec));
+      tr.appendChild(setCell);
+
+      var forCell = document.createElement('td');
+      var forInput = document.createElement('input');
+      forInput.size = 4;
+      forInput.placeholder = '-';
+      forInput.id = 'for-' + device.id + '-' + attr;
+      forCell.appendChild(forInput);
+      tr.appendChild(forCell);
+
+      var actionCell = document.createElement('td');
+      var button = document.createElement('button');
+      button.textContent = 'Set';
+      button.onclick = function () {
+        var body = {};
+        body[attr] = readInput(device.id, attr, spec);
+        var revert = el('for-' + device.id + '-' + attr).value.trim();
+        if (revert) { body.revert_after = revert; }
+        post('/api/v1/devices/' + device.id + '/set', body).then(function (result) {
+          show('state-notice', 'set ' + device.id + '.' + attr + ': ' + JSON.stringify(result.results));
+          loadState();
+        }).catch(function (error) { alert(error.message); });
+      };
+      actionCell.appendChild(button);
+      tr.appendChild(actionCell);
+      rows.appendChild(tr);
+      if (current) { fillInput(device.id, attr, spec, current.value); }
+    });
+  });
+}
+
+function renderGroups() {
+  var rows = el('group-rows');
+  rows.innerHTML = '';
+  state.groups.forEach(function (group) {
+    var tr = document.createElement('tr');
+    var name = document.createElement('td');
+    name.innerHTML = '<b>' + group.id + '</b>';
+    var members = document.createElement('td');
+    members.className = 'muted';
+    members.textContent = group.members.join(', ');
+    var attr = document.createElement('td');
+    var attrInput = document.createElement('input');
+    attrInput.size = 8;
+    attrInput.id = 'group-attr-' + group.id;
+    attrInput.placeholder = 'state';
+    attr.appendChild(attrInput);
+    var value = document.createElement('td');
+    var valueField = document.createElement('input');
+    valueField.size = 6;
+    valueField.id = 'group-value-' + group.id;
+    value.appendChild(valueField);
+    var revert = document.createElement('td');
+    var revertField = document.createElement('input');
+    revertField.size = 4;
+    revertField.id = 'group-for-' + group.id;
+    revertField.placeholder = '4h';
+    revert.appendChild(revertField);
+    var action = document.createElement('td');
+    var button = document.createElement('button');
+    button.textContent = 'Set all';
+    button.onclick = function () {
+      var attribute = attrInput.value.trim();
+      if (!attribute) { alert('attribute is required'); return; }
+      var body = {};
+      body[attribute] = valueField.value;
+      var raw = revertField.value.trim();
+      if (raw) { body.revert_after = raw; }
+      post('/api/v1/groups/' + group.id + '/set', body).then(function (result) {
+        show('state-notice', 'group ' + group.id + ': ' + JSON.stringify(result.results));
+        loadState();
+      }).catch(function (error) { alert(error.message); });
+    };
+    action.appendChild(button);
+    [name, members, attr, value, revert, action].forEach(function (cell) { tr.appendChild(cell); });
+    rows.appendChild(tr);
+  });
+}
+
+function loadState() {
+  return Promise.all([api('/api/v1/devices'), api('/api/v1/groups')]).then(function (result) {
+    state.devices = result[0];
+    state.groups = result[1];
+    renderState();
+    renderGroups();
+  });
+}
+
+function whenSummary(rule) {
+  var when = rule.when || {};
+  if (when.device) { return when.device + '.' + when.attr + (when.changed ? ' (changed)' : ''); }
+  if (when.at) { return 'at ' + when.at + (when.days ? ' ' + when.days.join(',') : ''); }
+  if (when.every) { return 'every ' + when.every; }
+  return '?';
+}
+
+function renderRules() {
+  var list = el('rule-list');
+  list.innerHTML = '';
+  state.rules.forEach(function (rule) {
+    var li = document.createElement('li');
+    li.className = (rule.id === state.selectedRule ? 'selected ' : '') + (rule.enabled ? '' : 'disabled');
+    li.innerHTML = '<div><b>' + rule.id + '</b> <span class="pill ' + (rule.enabled ? 'on' : 'off') + '">' + (rule.enabled ? 'on' : 'off') + '</span>'
+      + (rule.once ? ' <span class="pill">once</span>' : '') + '</div>'
+      + '<div class="muted">' + whenSummary(rule) + ' · priority ' + rule.priority + '</div>';
+    li.onclick = function () { selectRule(rule.id); };
+    list.appendChild(li);
+  });
+}
+
+function selectRule(ruleId) {
+  state.selectedRule = ruleId;
+  var rule = state.rules.filter(function (item) { return item.id === ruleId; })[0];
+  if (rule) { el('rule-json').value = JSON.stringify(rule, null, 2); }
+  renderRules();
+}
+
+function loadRules() {
+  return api('/api/v1/rules').then(function (rules) {
+    state.rules = rules;
+    if (!state.selectedRule && rules.length) { state.selectedRule = rules[0].id; selectRule(rules[0].id); }
+    renderRules();
+  });
+}
+
+function renderEvents(events) {
+  var rows = el('event-rows');
+  rows.innerHTML = '';
+  events.slice().reverse().forEach(function (event) {
+    var tr = document.createElement('tr');
+    var cells = [
+      new Date(event.ts).toLocaleTimeString(),
+      event.type,
+      event.rule || (event.rules ? event.rules.join(',') : ''),
+      event.device ? event.device + '.' + (event.attr || '') : (event.topic || ''),
+      fmt(event.value !== undefined ? event.value : (event.status || '')),
+      event.reason || event.error || event.action || ''
+    ];
+    cells.forEach(function (text, index) {
+      var td = document.createElement('td');
+      td.textContent = text;
+      if (index === 5 && event.error) { td.className = 'error'; }
+      tr.appendChild(td);
+    });
+    rows.appendChild(tr);
+  });
+}
+
+function loadEvents() {
+  var query = [];
+  var rule = el('event-rule').value.trim();
+  var kind = el('event-kind').value.trim();
+  var limit = el('event-limit').value.trim() || '100';
+  if (rule) { query.push('rule=' + encodeURIComponent(rule)); }
+  if (kind) { query.push('kind=' + encodeURIComponent(kind)); }
+  query.push('limit=' + encodeURIComponent(limit));
+  return api('/api/v1/events?' + query.join('&')).then(renderEvents).catch(function (error) { show('rule-result', error.message, true); });
+}
+
+function renderTab() {
+  el('tab-state').hidden = state.tab !== 'state';
+  el('tab-rules').hidden = state.tab !== 'rules';
+  el('tab-events').hidden = state.tab !== 'events';
+  var buttons = document.querySelectorAll('nav button');
+  for (var index = 0; index < buttons.length; index += 1) {
+    buttons[index].className = buttons[index].dataset.tab === state.tab ? 'active' : '';
+  }
+}
+
+document.querySelectorAll('nav button').forEach(function (button) {
+  button.onclick = function () { state.tab = button.dataset.tab; renderTab(); refresh(); };
+});
+
+el('refresh').onclick = function () { refresh(); };
+
+el('rule-new').onclick = function () {
+  state.selectedRule = null;
+  var template = {
+    id: 'new-rule',
+    enabled: false,
+    priority: 0,
+    when: { at: '22:00' },
+    then: [{ set: { device: state.devices.length ? state.devices[0].id : 'device-id', attr: 'state', value: 'ON' } }]
+  };
+  el('rule-json').value = JSON.stringify(template, null, 2);
+  renderRules();
+};
+
+el('rule-save').onclick = function () {
+  var document_;
+  try { document_ = JSON.parse(el('rule-json').value); } catch (error) { show('rule-result', 'invalid JSON: ' + error.message, true); return; }
+  var ruleId = state.selectedRule || document_.id;
+  put('/api/v1/rules/' + ruleId, document_).then(function (saved) {
+    show('rule-result', 'saved ' + saved.id);
+    state.selectedRule = saved.id;
+    return loadRules();
+  }).catch(function (error) { show('rule-result', error.message, true); });
+};
+
+el('rule-test').onclick = function () {
+  if (!state.selectedRule) { show('rule-result', 'save the rule first', true); return; }
+  post('/api/v1/rules/' + state.selectedRule + '/test').then(function (report) {
+    show('rule-result', JSON.stringify(report, null, 2));
+  }).catch(function (error) { show('rule-result', error.message, true); });
+};
+
+el('rule-toggle').onclick = function () {
+  if (!state.selectedRule) { return; }
+  var rule = state.rules.filter(function (item) { return item.id === state.selectedRule; })[0];
+  if (!rule) { return; }
+  post('/api/v1/rules/' + rule.id + (rule.enabled ? '/disable' : '/enable')).then(loadRules).catch(function (error) { show('rule-result', error.message, true); });
+};
+
+el('rule-delete').onclick = function () {
+  if (!state.selectedRule) { return; }
+  if (!confirm('Delete rule ' + state.selectedRule + '?')) { return; }
+  api('/api/v1/rules/' + state.selectedRule, { method: 'DELETE' }).then(function () {
+    state.selectedRule = null;
+    el('rule-json').value = '';
+    return loadRules();
+  }).catch(function (error) { show('rule-result', error.message, true); });
+};
+
+el('event-refresh').onclick = loadEvents;
+
+function refresh() {
+  loadStatus();
+  loadState();
+  if (state.tab === 'rules') { loadRules(); }
+  if (state.tab === 'events') { loadEvents(); }
+}
+
+refresh();
+setInterval(function () {
+  loadStatus();
+  loadState();
+  if (el('event-auto').checked && state.tab === 'events') { loadEvents(); }
+}, 3000);
+setInterval(function () { if (state.tab === 'rules') { loadRules(); } }, 10000);
+</script>
+</body>
+</html>
