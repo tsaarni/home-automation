@@ -125,7 +125,6 @@ src/automator/         config.py store.py models.py state.py mqtt_gateway.py
 seed/                  devices.json groups.json rules.json install.py generate_devices.py
                        README.md (how the seed is extracted, and why)
 tests/automator/       fake clock + fake broker; one test module per plan task
-deploy/                Dockerfile, app.yaml (Deployment/Service/PVC), README.md
 data/                  config.json pending.json events.jsonl  (runtime, not in git)
 ```
 
@@ -212,16 +211,26 @@ scenarios, scheduler, API, restart/reconnect and the seed set.
 
 ## Deployment
 
-See [deploy/README.md](deploy/README.md). One replica, one PVC (plain files, single writer),
-plain `Service`; exposure is a Cloudflare Tunnel route and there is no auth in the app.
+The image recipe, the Kubernetes manifests and the build script live in the infrastructure repo
+`~/hobby/home-infra` (`docker/automator/`, `manifests/automator.yaml`). One replica, one PVC
+(plain files, single writer), plain `Service`; exposure is a Cloudflare Tunnel route and there is
+no auth in the app.
 
-## Cutover
+```bash
+# from ~/hobby/home-infra: build on the cluster node, load the image, restart the Deployment
+docker/build.sh automator
+docker/build.sh --list               # every image that can be built
+```
 
-1. Deploy v2 in parallel with `DRY_RUN=true`; watch `/api/v1/events` for `dry-run` writes and
-   compare them with the old app's behaviour.
-2. Turn dry run off and confirm the four parity behaviours plus manual control.
-3. Delete the old deployment, ConfigMap and the `mqtttimer`/`thermostat` code
-   (`src/homeautomator`, `src/main.py`, `src/task.py`, `src/utils.py`, `main.py`, the example
-   YAMLs and the root `Dockerfile` still referenced by the old image).
-4. Follow-up in home-metrics (separate repo): publish energy and price to MQTT, then enable the
-   power-limit and price-shedding rules.
+## Replacing the old app
+
+The earlier `mqtttimer` / `thermostat` implementation is gone. Its code
+(`src/homeautomator`, `src/main.py`, `src/task.py`, `src/utils.py`, `main.py`, the example
+YAMLs, `requirements.txt` and the root `Dockerfile`) was deleted from this repository, and the
+old Deployment and ConfigMap were removed from the cluster. Git history keeps them.
+
+The four behaviours of the old app (terrace lights, toilet tariff, bathroom setback, heating
+curve) are the rules in `seed/rules.json` and run in the single `homeautomator` Deployment.
+
+Remaining follow-up, in the home-metrics repository: publish energy and price to MQTT, then
+enable the power-limit and price-shedding rules.

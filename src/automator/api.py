@@ -6,6 +6,8 @@ references are rejected with 422 so the stored model stays consistent.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -13,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
 from pydantic import ValidationError
 
 from . import __version__
@@ -336,6 +338,8 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
         until: str | None = None,
         rule: str | None = None,
         kind: str | None = None,
+        category: str | None = Query(None, description="Event category: activity, telemetry, timers, system"),
+        exclude_kinds: str | None = Query(None, description="Comma-separated event kinds to exclude (e.g. state,timer)"),
         limit: int = Query(default=settings.events_default_limit, ge=1, le=settings.events_max_limit),
     ) -> list[dict[str, Any]]:
         parsed_since: datetime | None = None
@@ -350,7 +354,77 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
                     parsed_until = from_iso(raw)
             except ValueError as exc:
                 raise _error(422, [f"{name}: {exc}"]) from None
-        return svc.store.read_events(since=parsed_since, until=parsed_until, rule=rule, kind=kind, limit=limit)
+        parsed_exclude = [k.strip() for k in exclude_kinds.split(",") if k.strip()] if exclude_kinds else None
+        return svc.store.read_events(
+            since=parsed_since,
+            until=parsed_until,
+            rule=rule,
+            kind=kind,
+            category=category,
+            exclude_kinds=parsed_exclude,
+            limit=limit,
+        )
+
+    @app.get("/api/v1/events/stream", tags=["events"])
+    async def stream_events(
+        request: Request,
+        category: str | None = Query(None, description="Event category: activity, telemetry, timers, system"),
+        exclude_kinds: str | None = Query(None, description="Comma-separated event kinds to exclude"),
+        kind: str | None = None,
+        rule: str | None = None,
+    ) -> StreamingResponse:
+        parsed_exclude = {k.strip() for k in exclude_kinds.split(",") if k.strip()} if exclude_kinds else None
+        from .store import CATEGORY_KINDS
+
+        allowed_kinds = CATEGORY_KINDS.get(category) if category is not None else None
+
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=100)
+
+        def on_event(event: dict[str, Any]) -> None:
+            ev_type = event.get("type")
+            if kind is not None and ev_type != kind:
+                return
+            if allowed_kinds is not None and ev_type not in allowed_kinds:
+                return
+            if parsed_exclude and ev_type in parsed_exclude:
+                return
+            if rule is not None:
+                from .store import _event_rules
+                if rule not in _event_rules(event):
+                    return
+            try:
+                queue.put_nowait(event)
+            except asyncio.QueueFull:
+                pass  # drop for slow consumers rather than blocking or growing unbounded
+
+        unsubscribe = svc.store.subscribe(on_event)
+
+        async def event_generator():
+            try:
+                # Send initial ping / comment to flush headers
+                yield ": connected\n\n"
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                        data = json.dumps(event, default=str)
+                        yield f"data: {data}\n\n"
+                    except asyncio.TimeoutError:
+                        # Keep-alive comment every 15s
+                        yield ": ping\n\n"
+            finally:
+                unsubscribe()
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     # -------------------------------------------------------------------- admin
 

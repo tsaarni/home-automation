@@ -225,7 +225,7 @@ class Term(Doc):
 
 
 class Condition(Doc):
-    """Condition tree; v2 has one level: all / any of terms."""
+    """Condition tree; one level: all / any of terms."""
 
     all: list[Term] | None = None
     any: list[Term] | None = None

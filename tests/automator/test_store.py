@@ -123,6 +123,22 @@ def test_events_append_filter_and_limit(tmp_path):
     assert len(store.read_events(until=clock.now - timedelta(seconds=30))) == 1
     assert [event["type"] for event in store.read_events(limit=1)] == ["write"]
     assert len(store.read_events(kind="state")) == 1
+    assert len(store.read_events(category="activity")) == 1
+    assert len(store.read_events(category="telemetry")) == 1
+    assert len(store.read_events(exclude_kinds=["state"])) == 1
+
+
+def test_events_subscribe(tmp_path):
+    store = make_store(tmp_path)
+    received = []
+    unsubscribe = store.subscribe(lambda ev: received.append(ev))
+    store.append_event({"type": "test_event", "val": 123})
+    assert len(received) == 1
+    assert received[0]["val"] == 123
+
+    unsubscribe()
+    store.append_event({"type": "test_event", "val": 456})
+    assert len(received) == 1
 
 
 def test_events_file_is_capped(tmp_path):

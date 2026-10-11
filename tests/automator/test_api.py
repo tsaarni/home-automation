@@ -271,6 +271,15 @@ def test_events_endpoint(tmp_path):
             writes = (await client.get("/api/v1/events?kind=write")).json
             assert writes and all(event["type"] == "write" for event in writes)
 
+            # category filter
+            activity_events = (await client.get("/api/v1/events?category=activity")).json
+            assert all(ev["type"] in {"write", "rule_fire", "rule_skip", "rule_error", "rule_once", "schedule", "conflict", "mqtt_value_error", "rule_depth_limit"} for ev in activity_events)
+            assert any(ev["type"] == "write" for ev in activity_events)
+
+            # exclude_kinds filter
+            no_writes = (await client.get("/api/v1/events?exclude_kinds=write")).json
+            assert all(ev["type"] != "write" for ev in no_writes)
+
             assert (await client.get("/api/v1/events?since=not-a-date")).status == 422
             assert (await client.get("/api/v1/events?limit=0")).status == 422
         finally:

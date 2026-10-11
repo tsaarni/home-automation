@@ -1,4 +1,5 @@
-# Build:  podman build -f deploy/Dockerfile -t quay.io/tsaarni/home-automator:v2 .
+# Build:  docker/build.sh homeautomator      (see ../README.md)
+# Manual: podman build -f docker/homeautomator/Dockerfile -t quay.io/tsaarni/home-automator:latest ~/hobby/home-automator
 #
 # The image holds the installed package plus the seed documents and the extraction tool in
 # /opt/seed (see seed/README.md). The service keeps its data in DATA_DIR, which is a volume.

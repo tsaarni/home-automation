@@ -32,6 +32,23 @@ CONFIG_VERSION = 1
 PENDING_VERSION = 1
 CONFIG_SECTIONS: tuple[tuple[str, type], ...] = (("devices", Device), ("groups", Group), ("rules", Rule))
 
+CATEGORY_KINDS: dict[str, set[str]] = {
+    "activity": {
+        "rule_fire",
+        "rule_skip",
+        "rule_error",
+        "rule_once",
+        "write",
+        "schedule",
+        "conflict",
+        "mqtt_value_error",
+        "rule_depth_limit",
+    },
+    "telemetry": {"state"},
+    "timers": {"timer"},
+    "system": {"boot", "config", "mqtt", "publish"},
+}
+
 
 class ConfigError(ValueError):
     """config.json could not be read, parsed or validated."""
@@ -85,6 +102,17 @@ class Store:
         self._config_mtime_ns = 0
         self._events: deque[dict[str, Any]] = deque(maxlen=events_memory)
         self._events_bytes = 0
+        self._event_listeners: list[Callable[[dict[str, Any]], None]] = []
+
+    def subscribe(self, listener: Callable[[dict[str, Any]], None]) -> Callable[[], None]:
+        """Subscribe to real-time events. Returns an unsubscribe callable."""
+        self._event_listeners.append(listener)
+
+        def unsubscribe() -> None:
+            if listener in self._event_listeners:
+                self._event_listeners.remove(listener)
+
+        return unsubscribe
 
     # ------------------------------------------------------------------ loading
 
@@ -307,6 +335,11 @@ class Store:
                 self._trim_events()
         except OSError as exc:
             self.log.error("cannot append event: %s", exc)
+        for listener in list(self._event_listeners):
+            try:
+                listener(record)
+            except Exception as exc:  # noqa: BLE001
+                self.log.warning("error in event listener: %s", exc)
         return record
 
     def _trim_events(self) -> None:
@@ -344,44 +377,81 @@ class Store:
         until: datetime | None = None,
         rule: str | None = None,
         kind: str | None = None,
+        category: str | None = None,
+        exclude_kinds: set[str] | list[str] | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """Newest-last slice of the audit log (falls back to the in-memory tail)."""
-        records: list[dict[str, Any]] = []
-        if self.events_path.exists():
-            try:
-                lines = self.events_path.read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                lines = []
-            for line in lines:
-                try:
-                    parsed = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(parsed, dict):
-                    records.append(parsed)
-        else:
-            records = list(self._events)
+        allowed_kinds = CATEGORY_KINDS.get(category) if category is not None else None
+        excluded = set(exclude_kinds) if exclude_kinds else None
 
-        result = []
-        for record in records:
-            if kind is not None and record.get("type") != kind:
-                continue
+        def matches(record: dict[str, Any]) -> tuple[bool, bool]:
+            """Returns (is_match, can_stop_early_when_reversed)."""
+            rec_type = record.get("type")
+            if kind is not None and rec_type != kind:
+                return False, False
+            if allowed_kinds is not None and rec_type not in allowed_kinds:
+                return False, False
+            if excluded is not None and rec_type in excluded:
+                return False, False
             if rule is not None and rule not in _event_rules(record):
-                continue
+                return False, False
             if since is not None or until is not None:
                 try:
                     ts = from_iso(str(record.get("ts")))
                 except (TypeError, ValueError):
-                    continue
-                if since is not None and ts < since:
-                    continue
+                    return False, False
                 if until is not None and ts > until:
+                    return False, False
+                if since is not None and ts < since:
+                    # When reading backwards in time, timestamps are non-increasing.
+                    # Once ts < since, all earlier lines will also be < since.
+                    return False, True
+            return True, False
+
+        matched: list[dict[str, Any]] = []
+
+        if self.events_path.exists():
+            try:
+                with self.events_path.open("r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+            except OSError:
+                lines = []
+
+            for line in reversed(lines):
+                line = line.strip()
+                if not line:
                     continue
-            result.append(record)
-        if limit > 0:
-            result = result[-limit:]
-        return result
+                try:
+                    parsed = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(parsed, dict):
+                    continue
+
+                is_match, stop_early = matches(parsed)
+                if is_match:
+                    matched.append(parsed)
+                    if limit > 0 and len(matched) >= limit:
+                        break
+                elif stop_early:
+                    break
+
+            matched.reverse()
+            return matched
+
+        # Fallback to in-memory events if file doesn't exist
+        for record in reversed(self._events):
+            is_match, stop_early = matches(record)
+            if is_match:
+                matched.append(record)
+                if limit > 0 and len(matched) >= limit:
+                    break
+            elif stop_early:
+                break
+
+        matched.reverse()
+        return matched
 
     @property
     def events_count(self) -> int:
