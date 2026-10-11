@@ -1,0 +1,3424 @@
+{
+  "button-car": {
+    "id": "button-car",
+    "attributes": {
+      "action": {
+        "read": {
+          "topic": "zigbee2mqtt/button-car",
+          "path": "action"
+        },
+        "type": "string",
+        "enum": [
+          "single",
+          "double",
+          "triple",
+          "quadruple",
+          "hold",
+          "release"
+        ]
+      },
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/button-car",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "device-temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/button-car",
+          "path": "device_temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/button-car",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "power-outage-count": {
+        "read": {
+          "topic": "zigbee2mqtt/button-car",
+          "path": "power_outage_count"
+        },
+        "type": "number"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/button-car",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "button-ikea": {
+    "id": "button-ikea",
+    "attributes": {
+      "action": {
+        "read": {
+          "topic": "zigbee2mqtt/button-ikea",
+          "path": "action"
+        },
+        "type": "string",
+        "enum": [
+          "on",
+          "off",
+          "brightness_move_up",
+          "brightness_stop"
+        ]
+      },
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/button-ikea",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/button-ikea",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      }
+    }
+  },
+  "door-1-storage-street": {
+    "id": "door-1-storage-street",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/door-1-storage-street",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "contact": {
+        "read": {
+          "topic": "zigbee2mqtt/door-1-storage-street",
+          "path": "contact"
+        },
+        "type": "boolean"
+      },
+      "device-temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/door-1-storage-street",
+          "path": "device_temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/door-1-storage-street",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "power-outage-count": {
+        "read": {
+          "topic": "zigbee2mqtt/door-1-storage-street",
+          "path": "power_outage_count"
+        },
+        "type": "number"
+      },
+      "trigger-count": {
+        "read": {
+          "topic": "zigbee2mqtt/door-1-storage-street",
+          "path": "trigger_count"
+        },
+        "type": "number"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/door-1-storage-street",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "door-2-storage-car": {
+    "id": "door-2-storage-car",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/door-2-storage-car",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "contact": {
+        "read": {
+          "topic": "zigbee2mqtt/door-2-storage-car",
+          "path": "contact"
+        },
+        "type": "boolean"
+      },
+      "device-temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/door-2-storage-car",
+          "path": "device_temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/door-2-storage-car",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "power-outage-count": {
+        "read": {
+          "topic": "zigbee2mqtt/door-2-storage-car",
+          "path": "power_outage_count"
+        },
+        "type": "number"
+      },
+      "trigger-count": {
+        "read": {
+          "topic": "zigbee2mqtt/door-2-storage-car",
+          "path": "trigger_count"
+        },
+        "type": "number"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/door-2-storage-car",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "door-front": {
+    "id": "door-front",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/door-front/49/0/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "battery-level": {
+        "read": {
+          "topic": "zwave/door-front/128/0/level",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zwave/door-front/49/0/Illuminance",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "low-battery-level": {
+        "read": {
+          "topic": "zwave/door-front/128/0/isLow",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "sensor-state-door-window": {
+        "read": {
+          "topic": "zwave/door-front/48/0/Door-Window",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "sensor-state-tamper": {
+        "read": {
+          "topic": "zwave/door-front/48/0/Tamper",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/door-front/status",
+          "path": "status"
+        },
+        "type": "string"
+      }
+    }
+  },
+  "door-livingroom": {
+    "id": "door-livingroom",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/door-livingroom/49/0/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "battery-level": {
+        "read": {
+          "topic": "zwave/door-livingroom/128/0/level",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/door-livingroom/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/door-livingroom/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zwave/door-livingroom/49/0/Illuminance",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "low-battery-level": {
+        "read": {
+          "topic": "zwave/door-livingroom/128/0/isLow",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "sensor-state-door-window": {
+        "read": {
+          "topic": "zwave/door-livingroom/48/0/Door-Window",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "sensor-state-tamper": {
+        "read": {
+          "topic": "zwave/door-livingroom/48/0/Tamper",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/door-livingroom/status",
+          "path": "status"
+        },
+        "type": "string"
+      }
+    }
+  },
+  "door-terrace": {
+    "id": "door-terrace",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/door-terrace",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "battery-low": {
+        "read": {
+          "topic": "zigbee2mqtt/door-terrace",
+          "path": "battery_low"
+        },
+        "type": "boolean"
+      },
+      "contact": {
+        "read": {
+          "topic": "zigbee2mqtt/door-terrace",
+          "path": "contact"
+        },
+        "type": "boolean"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/door-terrace",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/door-terrace",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "motion-agara-front": {
+    "id": "motion-agara-front",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-front",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "device-temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-front",
+          "path": "device_temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-front",
+          "path": "illuminance"
+        },
+        "type": "number",
+        "unit": "lx"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-front",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "occupancy": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-front",
+          "path": "occupancy"
+        },
+        "type": "boolean"
+      },
+      "power-outage-count": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-front",
+          "path": "power_outage_count"
+        },
+        "type": "number"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-front",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "motion-agara-terrace": {
+    "id": "motion-agara-terrace",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-terrace",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "device-temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-terrace",
+          "path": "device_temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-terrace",
+          "path": "illuminance"
+        },
+        "type": "number",
+        "unit": "lx"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-terrace",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "occupancy": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-terrace",
+          "path": "occupancy"
+        },
+        "type": "boolean"
+      },
+      "power-outage-count": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-terrace",
+          "path": "power_outage_count"
+        },
+        "type": "number"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-agara-terrace",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "motion-philips-car": {
+    "id": "motion-philips-car",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "illuminance"
+        },
+        "type": "number"
+      },
+      "illuminance-lux": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "illuminance_lux"
+        },
+        "type": "number",
+        "unit": "lx"
+      },
+      "led-indication": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "led_indication"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zigbee2mqtt/motion-philips-car/set",
+          "payload": {
+            "led_indication": "$v"
+          }
+        }
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "motion-sensitivity": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "motion_sensitivity"
+        },
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/motion-philips-car/set",
+          "payload": {
+            "motion_sensitivity": "$v"
+          }
+        }
+      },
+      "occupancy": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "occupancy"
+        },
+        "type": "boolean"
+      },
+      "occupancy-timeout": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "occupancy_timeout"
+        },
+        "type": "number",
+        "unit": "s",
+        "limits": [
+          0,
+          65535
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/motion-philips-car/set",
+          "payload": {
+            "occupancy_timeout": "$v"
+          }
+        }
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-philips-car",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "motion-sonoff": {
+    "id": "motion-sonoff",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-sonoff",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "battery-low": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-sonoff",
+          "path": "battery_low"
+        },
+        "type": "boolean"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-sonoff",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "occupancy": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-sonoff",
+          "path": "occupancy"
+        },
+        "type": "boolean"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/motion-sonoff",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "powerplug-1-kitchen": {
+    "id": "powerplug-1-kitchen",
+    "attributes": {
+      "child-lock": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen",
+          "path": "child_lock"
+        },
+        "type": "string",
+        "enum": [
+          "LOCK",
+          "UNLOCK"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen/set",
+          "payload": {
+            "child_lock": "$v"
+          }
+        }
+      },
+      "indicator-mode": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen",
+          "path": "indicator_mode"
+        },
+        "type": "string",
+        "enum": [
+          "off",
+          "off/on",
+          "on/off",
+          "on"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen/set",
+          "payload": {
+            "indicator_mode": "$v"
+          }
+        }
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "power-outage-memory": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen",
+          "path": "power_outage_memory"
+        },
+        "type": "string",
+        "enum": [
+          "on",
+          "off",
+          "restore"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen/set",
+          "payload": {
+            "power_outage_memory": "$v"
+          }
+        }
+      },
+      "state": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen",
+          "path": "state"
+        },
+        "type": "string",
+        "enum": [
+          "ON",
+          "OFF"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-1-kitchen/set",
+          "payload": {
+            "state": "$v"
+          }
+        }
+      }
+    }
+  },
+  "powerplug-2": {
+    "id": "powerplug-2",
+    "attributes": {
+      "child-lock": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-2",
+          "path": "child_lock"
+        },
+        "type": "string",
+        "enum": [
+          "LOCK",
+          "UNLOCK"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-2/set",
+          "payload": {
+            "child_lock": "$v"
+          }
+        }
+      },
+      "indicator-mode": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-2",
+          "path": "indicator_mode"
+        },
+        "type": "string",
+        "enum": [
+          "off",
+          "off/on",
+          "on/off",
+          "on"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-2/set",
+          "payload": {
+            "indicator_mode": "$v"
+          }
+        }
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-2",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "power-outage-memory": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-2",
+          "path": "power_outage_memory"
+        },
+        "type": "string",
+        "enum": [
+          "on",
+          "off",
+          "restore"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-2/set",
+          "payload": {
+            "power_outage_memory": "$v"
+          }
+        }
+      },
+      "state": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-2",
+          "path": "state"
+        },
+        "type": "string",
+        "enum": [
+          "ON",
+          "OFF"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-2/set",
+          "payload": {
+            "state": "$v"
+          }
+        }
+      }
+    }
+  },
+  "powerplug-3-pm": {
+    "id": "powerplug-3-pm",
+    "attributes": {
+      "child-lock": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "child_lock"
+        },
+        "type": "string",
+        "enum": [
+          "LOCK",
+          "UNLOCK"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-3-pm/set",
+          "payload": {
+            "child_lock": "$v"
+          }
+        }
+      },
+      "countdown": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "countdown"
+        },
+        "type": "number",
+        "unit": "s",
+        "limits": [
+          0,
+          43200
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-3-pm/set",
+          "payload": {
+            "countdown": "$v"
+          }
+        }
+      },
+      "current": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "current"
+        },
+        "type": "number",
+        "unit": "A"
+      },
+      "energy": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "energy"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "indicator-mode": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "indicator_mode"
+        },
+        "type": "string",
+        "enum": [
+          "off",
+          "off/on",
+          "on/off",
+          "on"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-3-pm/set",
+          "payload": {
+            "indicator_mode": "$v"
+          }
+        }
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "power": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "power"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "power-outage-memory": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "power_outage_memory"
+        },
+        "type": "string",
+        "enum": [
+          "on",
+          "off",
+          "restore"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-3-pm/set",
+          "payload": {
+            "power_outage_memory": "$v"
+          }
+        }
+      },
+      "state": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "state"
+        },
+        "type": "string",
+        "enum": [
+          "ON",
+          "OFF"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-3-pm/set",
+          "payload": {
+            "state": "$v"
+          }
+        }
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-3-pm",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "V"
+      }
+    }
+  },
+  "powerplug-car": {
+    "id": "powerplug-car",
+    "attributes": {
+      "current-value": {
+        "read": {
+          "topic": "zwave/powerplug-car/37/0/currentValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/powerplug-car/37/0/currentValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/powerplug-car/50/0/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/powerplug-car/50/0/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-car",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "state": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-car",
+          "path": "state"
+        },
+        "type": "string",
+        "enum": [
+          "ON",
+          "OFF"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-car/set",
+          "payload": {
+            "state": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/powerplug-car/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "target-value": {
+        "read": {
+          "topic": "zwave/powerplug-car/37/0/targetValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/powerplug-car/37/0/targetValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      }
+    }
+  },
+  "powerplug-terrace": {
+    "id": "powerplug-terrace",
+    "name": "Terrace lights",
+    "attributes": {
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-terrace",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "state": {
+        "read": {
+          "topic": "zigbee2mqtt/powerplug-terrace",
+          "path": "state"
+        },
+        "type": "string",
+        "enum": [
+          "ON",
+          "OFF"
+        ],
+        "write": {
+          "topic": "zigbee2mqtt/powerplug-terrace/set",
+          "payload": {
+            "state": "$v"
+          }
+        },
+        "default": "OFF"
+      }
+    }
+  },
+  "signal-repeater-storage": {
+    "id": "signal-repeater-storage",
+    "attributes": {
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/signal-repeater-storage",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      }
+    }
+  },
+  "siren-kitchen": {
+    "id": "siren-kitchen",
+    "attributes": {
+      "cover-status": {
+        "read": {
+          "topic": "zwave/siren-kitchen/113/0/Home_Security/Cover_status",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          3
+        ]
+      },
+      "current-value": {
+        "read": {
+          "topic": "zwave/siren-kitchen/37/0/currentValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/siren-kitchen/37/0/currentValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "general-purpose": {
+        "read": {
+          "topic": "zwave/siren-kitchen/48/0/General_Purpose",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "notification-mode": {
+        "read": {
+          "topic": "zwave/siren-kitchen/113/0/notificationMode",
+          "path": "value"
+        },
+        "type": "string"
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/siren-kitchen/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "supports-v1-alarm": {
+        "read": {
+          "topic": "zwave/siren-kitchen/113/0/supportsV1Alarm",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "tamper": {
+        "read": {
+          "topic": "zwave/siren-kitchen/48/0/Tamper",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "target-value": {
+        "read": {
+          "topic": "zwave/siren-kitchen/37/0/targetValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/siren-kitchen/37/0/targetValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      }
+    }
+  },
+  "temperature-1-storage-street": {
+    "id": "temperature-1-storage-street",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-1-storage-street",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-1-storage-street",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-1-storage-street",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-1-storage-street",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-1-storage-street",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-10-utilityroom": {
+    "id": "temperature-10-utilityroom",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-10-utilityroom",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-10-utilityroom",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-10-utilityroom",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-10-utilityroom",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-10-utilityroom",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-10-utilityroom",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-11-office": {
+    "id": "temperature-11-office",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-11-office",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-11-office",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-11-office",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-11-office",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "temperature-12": {
+    "id": "temperature-12",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-12",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-12",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-12",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-12",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "temperature-13": {
+    "id": "temperature-13",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-13",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-13",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-13",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-13",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "temperature-2-storage-car": {
+    "id": "temperature-2-storage-car",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-2-storage-car",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-2-storage-car",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-2-storage-car",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-2-storage-car",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-2-storage-car",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-3-emptyroom": {
+    "id": "temperature-3-emptyroom",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-3-emptyroom",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-3-emptyroom",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-3-emptyroom",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-3-emptyroom",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-3-emptyroom",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-3-emptyroom",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-4": {
+    "id": "temperature-4",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-4",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-4",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-4",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-4",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-4",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-4",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-5": {
+    "id": "temperature-5",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-5",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-5",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-5",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-5",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-5",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-5",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-6": {
+    "id": "temperature-6",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-6",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-6",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-6",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-6",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-6",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-6",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-7-bedroom": {
+    "id": "temperature-7-bedroom",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-7-bedroom",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-7-bedroom",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-7-bedroom",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-7-bedroom",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-7-bedroom",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-8-toilet": {
+    "id": "temperature-8-toilet",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-8-toilet",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-8-toilet",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-8-toilet",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-8-toilet",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-8-toilet",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-8-toilet",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-9-bathroom": {
+    "id": "temperature-9-bathroom",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-9-bathroom",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-9-bathroom",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-9-bathroom",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-9-bathroom",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-9-bathroom",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-9-bathroom",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "temperature-backyard": {
+    "id": "temperature-backyard",
+    "attributes": {
+      "battery": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-backyard",
+          "path": "battery"
+        },
+        "type": "number",
+        "unit": "%",
+        "limits": [
+          0,
+          100
+        ]
+      },
+      "humidity": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-backyard",
+          "path": "humidity"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "linkquality": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-backyard",
+          "path": "linkquality"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "pressure": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-backyard",
+          "path": "pressure"
+        },
+        "type": "number",
+        "unit": "hPa"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-backyard",
+          "path": "temperature"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "voltage": {
+        "read": {
+          "topic": "zigbee2mqtt/temperature-backyard",
+          "path": "voltage"
+        },
+        "type": "number",
+        "unit": "mV"
+      }
+    }
+  },
+  "thermostat-bathroom": {
+    "id": "thermostat-bathroom",
+    "name": "Bathroom thermostat",
+    "attributes": {
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-v": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/50/4/value/66561",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/64/0/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-bathroom/64/0/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/67/0/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          40
+        ],
+        "write": {
+          "topic": "zwave/thermostat-bathroom/67/0/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        },
+        "default": 17
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/67/0/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          40
+        ],
+        "write": {
+          "topic": "zwave/thermostat-bathroom/67/0/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zwave/thermostat-bathroom/49/0/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "thermostat-bedroom": {
+    "id": "thermostat-bedroom",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/49/3/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "air-temperature-ep2": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/49/2/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "barometric-pressure": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/49/2/Barometric_pressure",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kPa"
+      },
+      "current-value": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/37/4/currentValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/thermostat-bedroom/37/4/currentValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-v": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/50/4/value/66561",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/50/4/value/65536",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-power-w": {
+        "read": {
+          "topic": "home/thermostat-bedroom/electric_power_w"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-v": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/50/4/value/66560",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-voltage-v": {
+        "read": {
+          "topic": "home/thermostat-bedroom/electric_voltage_v"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-w": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/50/4/value/66048",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "exhaust-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/49/2/Exhaust_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "humidity": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/49/3/Humidity",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/49/3/Illuminance",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/64/1/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-bedroom/64/1/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-1": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/67/1/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-bedroom/67/1/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/67/1/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-bedroom/67/1/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-2": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/67/1/setpoint/2",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-bedroom/67/1/setpoint/2/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-bedroom/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "temperature-celsius": {
+        "read": {
+          "topic": "home/thermostat-bedroom/temperature_celsius"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "thermostat-emptyroom": {
+    "id": "thermostat-emptyroom",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/49/2/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "any": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/48/0/Any",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "current-value": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/37/4/currentValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/thermostat-emptyroom/37/4/currentValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-v": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/4/value/66561",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/4/value/65536",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-v": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/4/value/66560",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-w": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/4/value/66048",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-w-66051": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/4/value/66051",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "humidity": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/49/2/Humidity",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/49/3/Illuminance",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/64/1/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-emptyroom/64/1/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "mode-ep0": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/64/0/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          2,
+          17,
+          20,
+          21,
+          25,
+          32,
+          37,
+          42,
+          45,
+          74,
+          76,
+          77,
+          78,
+          79
+        ],
+        "write": {
+          "topic": "zwave/thermostat-emptyroom/64/0/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-1": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/67/1/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-emptyroom/67/1/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/67/1/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-emptyroom/67/1/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-11-ep0": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/67/0/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-emptyroom/67/0/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-2": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/67/1/setpoint/2",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-emptyroom/67/1/setpoint/2/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "water-consumption-usgallons": {
+        "read": {
+          "topic": "zwave/thermostat-emptyroom/50/6/value/197121",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "US gallons"
+      }
+    }
+  },
+  "thermostat-hall": {
+    "id": "thermostat-hall",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-hall/49/3/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "air-temperature-ep2": {
+        "read": {
+          "topic": "zwave/thermostat-hall/49/2/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "alarm-level": {
+        "read": {
+          "topic": "zwave/thermostat-hall/113/2/alarmLevel",
+          "path": "value"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "alarm-type": {
+        "read": {
+          "topic": "zwave/thermostat-hall/113/2/alarmType",
+          "path": "value"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "current-value": {
+        "read": {
+          "topic": "zwave/thermostat-hall/37/4/currentValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/thermostat-hall/37/4/currentValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-hall/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-v": {
+        "read": {
+          "topic": "zwave/thermostat-hall/50/4/value/66561",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/thermostat-hall/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-hall/50/4/value/65536",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-kwh-65539": {
+        "read": {
+          "topic": "zwave/thermostat-hall/50/4/value/65539",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-power-w": {
+        "read": {
+          "topic": "home/thermostat-hall/electric_power_w"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-v": {
+        "read": {
+          "topic": "zwave/thermostat-hall/50/4/value/66560",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-voltage-v": {
+        "read": {
+          "topic": "home/thermostat-hall/electric_voltage_v"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-w": {
+        "read": {
+          "topic": "zwave/thermostat-hall/50/4/value/66048",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "exhaust-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-hall/49/3/Exhaust_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "exhaust-temperature-ep2": {
+        "read": {
+          "topic": "zwave/thermostat-hall/49/2/Exhaust_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zwave/thermostat-hall/49/3/Illuminance",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "illuminance-ep2": {
+        "read": {
+          "topic": "zwave/thermostat-hall/49/2/Illuminance",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-hall/64/1/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-hall/64/1/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "particulate-matter-2.5": {
+        "read": {
+          "topic": "zwave/thermostat-hall/49/2/Particulate_Matter_25",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "mol/m³"
+      },
+      "setpoint-1": {
+        "read": {
+          "topic": "zwave/thermostat-hall/67/1/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-hall/67/1/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-hall/67/1/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-hall/67/1/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-2": {
+        "read": {
+          "topic": "zwave/thermostat-hall/67/1/setpoint/2",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-hall/67/1/setpoint/2/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-hall/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "temperature-celsius": {
+        "read": {
+          "topic": "home/thermostat-hall/temperature_celsius"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "thermostat-kitchen": {
+    "id": "thermostat-kitchen",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-kitchen/49/0/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-kitchen/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/thermostat-kitchen/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-kitchen/64/0/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-kitchen/64/0/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-1": {
+        "read": {
+          "topic": "zwave/thermostat-kitchen/67/0/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          40
+        ],
+        "write": {
+          "topic": "zwave/thermostat-kitchen/67/0/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-kitchen/67/0/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          40
+        ],
+        "write": {
+          "topic": "zwave/thermostat-kitchen/67/0/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-kitchen/status",
+          "path": "status"
+        },
+        "type": "string"
+      }
+    }
+  },
+  "thermostat-livingroom": {
+    "id": "thermostat-livingroom",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-livingroom/49/0/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-livingroom/64/0/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-livingroom/64/0/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-1": {
+        "read": {
+          "topic": "zwave/thermostat-livingroom/67/0/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          40
+        ],
+        "write": {
+          "topic": "zwave/thermostat-livingroom/67/0/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-livingroom/67/0/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          40
+        ],
+        "write": {
+          "topic": "zwave/thermostat-livingroom/67/0/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-livingroom/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "temperature-celsius": {
+        "read": {
+          "topic": "home/thermostat-livingroom/temperature_celsius"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  },
+  "thermostat-office": {
+    "id": "thermostat-office",
+    "attributes": {
+      "air-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-office/49/3/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "air-temperature-ep2": {
+        "read": {
+          "topic": "zwave/thermostat-office/49/2/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "alarm-level": {
+        "read": {
+          "topic": "zwave/thermostat-office/113/0/alarmLevel",
+          "path": "value"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "alarm-type": {
+        "read": {
+          "topic": "zwave/thermostat-office/113/0/alarmType",
+          "path": "value"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "barometric-pressure": {
+        "read": {
+          "topic": "zwave/thermostat-office/49/0/Barometric_pressure",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "inHg"
+      },
+      "current-value": {
+        "read": {
+          "topic": "zwave/thermostat-office/37/4/currentValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/thermostat-office/37/4/currentValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-office/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-v": {
+        "read": {
+          "topic": "zwave/thermostat-office/50/4/value/66561",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/thermostat-office/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-office/50/0/value/65536",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-kwh-65539": {
+        "read": {
+          "topic": "zwave/thermostat-office/50/0/value/65539",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "exhaust-temperature": {
+        "read": {
+          "topic": "zwave/thermostat-office/49/0/Exhaust_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "humidity": {
+        "read": {
+          "topic": "zwave/thermostat-office/49/0/Humidity",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-office/64/1/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-office/64/1/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-1": {
+        "read": {
+          "topic": "zwave/thermostat-office/67/1/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-office/67/1/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-office/67/1/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-office/67/1/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-2": {
+        "read": {
+          "topic": "zwave/thermostat-office/67/1/setpoint/2",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-office/67/1/setpoint/2/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-office/status",
+          "path": "status"
+        },
+        "type": "string"
+      }
+    }
+  },
+  "thermostat-toilet": {
+    "id": "thermostat-toilet",
+    "name": "Toilet thermostat",
+    "attributes": {
+      "air-temperature-ep2": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/49/2/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "alarm-level": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/113/2/alarmLevel",
+          "path": "value"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "alarm-type": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/113/2/alarmType",
+          "path": "value"
+        },
+        "type": "number",
+        "limits": [
+          0,
+          255
+        ]
+      },
+      "carbon-dioxide-co-level": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/49/2/Carbon_dioxide_CO_level",
+          "path": "value"
+        },
+        "type": "number"
+      },
+      "current-value": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/37/4/currentValue",
+          "path": "value"
+        },
+        "type": "boolean",
+        "write": {
+          "topic": "zwave/thermostat-toilet/37/4/currentValue/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "electric-consumption-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/50/4/value/65537",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-consumption-v": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/50/4/value/66561",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-consumption-w": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/50/4/value/66049",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-kwh": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/50/4/value/65536",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "kWh"
+      },
+      "electric-power-w": {
+        "read": {
+          "topic": "home/thermostat-toilet/electric_power_w"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-v": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/50/4/value/66560",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-voltage-v": {
+        "read": {
+          "topic": "home/thermostat-toilet/electric_voltage_v"
+        },
+        "type": "number",
+        "unit": "V"
+      },
+      "electric-w": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/50/4/value/66048",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "electric-w-66051": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/50/4/value/66051",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "W"
+      },
+      "illuminance": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/49/3/Illuminance",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "%"
+      },
+      "mode": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/64/1/mode",
+          "path": "value"
+        },
+        "type": "number",
+        "enum": [
+          0,
+          1,
+          2,
+          11
+        ],
+        "write": {
+          "topic": "zwave/thermostat-toilet/64/1/mode/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "sensor-state-unknown-0x22": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/48/4/unknown_0x22",
+          "path": "value"
+        },
+        "type": "boolean"
+      },
+      "setpoint": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/67/1/setpoint/1",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-toilet/67/1/setpoint/1/set",
+          "payload": {
+            "value": "$v"
+          }
+        },
+        "default": 15
+      },
+      "setpoint-11": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/67/1/setpoint/11",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-toilet/67/1/setpoint/11/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "setpoint-2": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/67/1/setpoint/2",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C",
+        "limits": [
+          5,
+          35
+        ],
+        "write": {
+          "topic": "zwave/thermostat-toilet/67/1/setpoint/2/set",
+          "payload": {
+            "value": "$v"
+          }
+        }
+      },
+      "status": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/status",
+          "path": "status"
+        },
+        "type": "string"
+      },
+      "temperature": {
+        "read": {
+          "topic": "zwave/thermostat-toilet/49/3/Air_temperature",
+          "path": "value"
+        },
+        "type": "number",
+        "unit": "C"
+      },
+      "temperature-celsius": {
+        "read": {
+          "topic": "home/thermostat-toilet/temperature_celsius"
+        },
+        "type": "number",
+        "unit": "C"
+      }
+    }
+  }
+}

@@ -161,3 +161,6 @@ cython_debug/
 
 config.yaml
 .python-version
+
+# runtime data (config.json, pending.json, events.jsonl)
+data/

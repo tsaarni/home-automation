@@ -1,0 +1,95 @@
+# home-automator v2: one replica, one PVC, no auth (Cloudflare Access at the edge).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: automator-data
+  labels:
+    app.kubernetes.io/name: home-automator
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: automator
+  labels:
+    app.kubernetes.io/name: home-automator
+spec:
+  replicas: 1 # single writer: config.json, pending.json and events.jsonl are plain files
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: home-automator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: home-automator
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: automator
+          image: quay.io/tsaarni/home-automator:v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            # everything else is a document in config.json
+            - name: MQTT_URL
+              value: mosquitto
+            - name: DATA_DIR
+              value: /data
+            - name: TZ
+              value: Europe/Helsinki
+            - name: LAT
+              value: "60.4518"
+            - name: LON
+              value: "22.2666"
+            #  - name: DRY_RUN
+            #    value: "true"   # cutover rehearsal: plan writes, change nothing
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 10m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: automator-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: automator
+  labels:
+    app.kubernetes.io/name: home-automator
+spec:
+  selector:
+    app.kubernetes.io/name: home-automator
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

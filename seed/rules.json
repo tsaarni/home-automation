@@ -1,0 +1,70 @@
+{
+  "terrace-dusk": {
+    "id": "terrace-dusk",
+    "name": "Terrace lights on at dusk",
+    "when": { "at": "dusk" },
+    "then": [{ "set": { "device": "powerplug-terrace", "attr": "state", "value": "ON" } }]
+  },
+  "terrace-nightoff": {
+    "id": "terrace-nightoff",
+    "name": "Terrace lights off at 23:30",
+    "when": { "at": "23:30" },
+    "then": [{ "set": { "device": "powerplug-terrace", "attr": "state", "value": "OFF" } }]
+  },
+  "terrace-morningon": {
+    "id": "terrace-morningon",
+    "name": "Terrace lights on at 06:00",
+    "when": { "at": "06:00" },
+    "then": [{ "set": { "device": "powerplug-terrace", "attr": "state", "value": "ON" } }]
+  },
+  "terrace-sunrise": {
+    "id": "terrace-sunrise",
+    "name": "Terrace lights off at sunrise",
+    "when": { "at": "sunrise" },
+    "then": [{ "set": { "device": "powerplug-terrace", "attr": "state", "value": "OFF" } }]
+  },
+  "toilet-night": {
+    "id": "toilet-night",
+    "name": "Toilet night tariff",
+    "when": { "at": "22:00" },
+    "then": [{ "set": { "device": "thermostat-toilet", "attr": "setpoint", "value": 24 } }]
+  },
+  "toilet-day": {
+    "id": "toilet-day",
+    "name": "Toilet day tariff",
+    "when": { "at": "07:00" },
+    "then": [{ "set": { "device": "thermostat-toilet", "attr": "setpoint", "value": 15 } }]
+  },
+  "bathroom-setback": {
+    "id": "bathroom-setback",
+    "name": "Bathroom setback after a manual change",
+    "priority": 100,
+    "when": { "device": "thermostat-bathroom", "attr": "setpoint", "changed": true },
+    "if": { "all": [{ "attr": ["thermostat-bathroom", "setpoint"], "op": "ne", "value": 17 }] },
+    "for": "3h",
+    "then": [{ "set": { "device": "thermostat-bathroom", "attr": "setpoint", "value": 17 } }]
+  },
+  "bathroom-curve": {
+    "id": "bathroom-curve",
+    "name": "Bathroom heating curve from the outdoor temperature",
+    "when": { "device": "temperature-backyard", "attr": "temperature" },
+    "then": [
+      {
+        "set_curve": {
+          "device": "thermostat-bathroom",
+          "attr": "setpoint",
+          "x": { "device": "temperature-backyard", "attr": "temperature" },
+          "points": [[-20, 25], [-5, 23], [0, 21], [10, 19], [20, 17]]
+        }
+      }
+    ]
+  },
+  "powerplugs-off-at-night": {
+    "id": "powerplugs-off-at-night",
+    "name": "Example: every power plug off at 01:00, back on after 5h",
+    "enabled": false,
+    "once": false,
+    "when": { "at": "01:00", "days": ["Mon", "Tue", "Wed", "Thu", "Fri"] },
+    "then": [{ "set": { "group": "powerplug", "attr": "state", "value": "OFF", "revert_after": "5h" } }]
+  }
+}
