@@ -2,10 +2,12 @@
 
 ⚠️ Note: This project is meant for personal use, and is not guaranteed to work for anyone else.
 
+Single-node k3s cluster. All user workloads run in the `default` namespace.
+
 ## Install or update k3s
 
 ```
-curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -s - --write-kubeconfig-mode 644 --disable traefik --disable servicelb
+curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -s - --write-kubeconfig-mode 644 --disable traefik --disable servicelb --disable gateway-api-crd
 ```
 
 ## Change ingress controller to Contour
@@ -21,7 +23,8 @@ Disable default ingress controller
         '--write-kubeconfig-mode=644' \
 -
 +       --disable traefik \
-+       --disable servicelb
++       --disable servicelb \
++       --disable gateway-api-crd
 ```
 
 Restart k3s
@@ -37,6 +40,15 @@ Deploy Contour
 
 ```console
 kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
+```
+
+## Control the cluster from another machine
+
+```console
+scp user@host:/etc/rancher/k3s/k3s.yaml ~/.kube/config
+chmod 600 ~/.kube/config
+sed -i '' 's#https://127.0.0.1:6443#https://NODE_IP:6443#' ~/.kube/config
+kubectl get nodes
 ```
 
 ## Store configuration
@@ -57,8 +69,6 @@ kubectl create secret generic dyndns-gcp-key --from-file=secrets/gcp-dyndns-clie
 kubectl create secret generic cloudflared-token --from-file=secrets/cloudflared-tunnel-token --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-````
-
 ## Deploy apps
 
 Build custom node-red image and import it to containerd store
@@ -67,7 +77,7 @@ Build custom node-red image and import it to containerd store
 podman build --tag nodered:latest docker/nodered/
 podman save localhost/nodered:latest | sudo k3s ctr images import -
 sudo k3s ctr images ls | grep nodered
-````
+```
 
 ## Tips
 
