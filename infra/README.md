@@ -63,11 +63,6 @@ kubectl apply -f secrets/device-gateway-config.yaml
 # homeautomator: no ConfigMap. The documents live on the PVC homeautomator-data.
 # The old homeautomator-config ConfigMap was removed, see legacy/homeautomator-config.yaml.
 
-# dyndns
-kubectl create configmap dyndns-config --from-file=secrets/dyndns-config.yaml --dry-run=client -o yaml | kubectl apply -f -
-gcloud iam service-accounts keys create secrets/gcp-dyndns-client-serviceaccount.json --iam-account="dyndns-client@$(gcloud config get project).iam.gserviceaccount.com" --project="$(gcloud config get project)"
-kubectl create secret generic dyndns-gcp-key --from-file=secrets/gcp-dyndns-client-serviceaccount.json --dry-run=client -o yaml | kubectl apply -f -
-
 # cloudflared tunnel
 kubectl create secret generic cloudflared-token --from-file=secrets/cloudflared-tunnel-token --dry-run=client -o yaml | kubectl apply -f -
 ```

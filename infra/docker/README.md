@@ -2,11 +2,42 @@
 
 Run from the repository root. All images use `latest`.
 
-The three images use Python 3.14 on Alpine 3.23, with production dependencies
+The three Python images use Python 3.14 on Alpine 3.23, with production dependencies
 installed from `uv.lock`. A separate build stage keeps uv, source files and build
 caches out of the runtime. Each service runs as UID/GID 10001. Alpine works with
 the locked amd64 musl wheels; keep wheel compatibility in mind when updating
 dependencies. Build contexts exclude local configuration, data and virtualenvs.
+
+## Web UI
+
+The web UI uses Node.js 24 and pnpm to build the locked dependencies, then copies
+only `dist/` into `nginx:stable-alpine-slim`. The runtime runs as UID/GID 10001 on
+port 8080, serves SPA routes, and proxies `/api/*`, `/readyz` and `/metrics` to
+`API_TARGET` (default `http://homeautomator:80`). Set `API_TARGET` at runtime to
+an upstream origin without a trailing slash or path. `/healthz` checks the static
+server independently of the backend. Mocks are disabled and the API base is
+same-origin in the production build.
+
+```bash
+docker build -f infra/docker/webui/Dockerfile -t home-webui:latest webui
+docker run --rm -p 8080:8080 --network homeautomation \
+  -e API_TARGET=http://homeautomator:80 home-webui:latest
+```
+
+The run example assumes an existing Docker network named `homeautomation` with
+the backend reachable as `homeautomator` on port 80.
+
+Build directly into mele's k3s image store:
+
+```bash
+docker buildx build --builder mele --platform linux/amd64 \
+  -f infra/docker/webui/Dockerfile \
+  -t quay.io/tsaarni/home-webui:latest \
+  --provenance=false --output type=image,push=false,store=true,unpack=true webui
+```
+
+To publish to Quay instead, replace the `--provenance=false --output ...` options
+with `--push` after logging in.
 
 ## Development: install locally on mele
 

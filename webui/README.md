@@ -91,6 +91,10 @@ is a small static container that serves `dist/` and reverse-proxies `/api/*`, `/
 `/metrics` to the automator service — same origin, no CORS, no backend change. Build with an
 empty `VITE_API_BASE` in that case.
 
+The container build is in [`infra/docker/webui/Dockerfile`](../infra/docker/webui/Dockerfile).
+See the [container build instructions](../infra/docker/README.md#web-ui) for local
+builds and runtime configuration.
+
 ## Layout
 
 ```
