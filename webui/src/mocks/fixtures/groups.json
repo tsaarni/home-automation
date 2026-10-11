@@ -1,0 +1,8 @@
+[
+  {
+    "id": "powerplug",
+    "name": "Power plugs",
+    "members": ["powerplug-1-kitchen", "powerplug-2", "powerplug-3-pm", "powerplug-car", "powerplug-terrace"],
+    "referenced_by": ["powerplugs-off-at-night"]
+  }
+]
