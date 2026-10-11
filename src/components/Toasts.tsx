@@ -1,34 +1,5 @@
-import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { subscribeToasts, type Toast } from "@/lib/toast";
-import { tokens } from "@/theme/tokens.stylex";
-
-const styles = stylex.create({
-  wrap: {
-    position: "fixed",
-    left: "50%",
-    transform: "translateX(-50%)",
-    bottom: "calc(64px + env(safe-area-inset-bottom))",
-    display: "flex",
-    flexDirection: "column",
-    gap: tokens.space2,
-    zIndex: 100,
-    width: "min(92vw, 420px)",
-  },
-  toast: {
-    borderRadius: tokens.radiusSm,
-    borderStyle: "solid",
-    borderWidth: 1,
-    padding: tokens.space3,
-    fontSize: tokens.fontMd,
-    boxShadow: tokens.shadow,
-    backgroundColor: tokens.surfaceRaised,
-    color: tokens.text,
-  },
-  ok: { borderColor: tokens.ok },
-  bad: { borderColor: tokens.bad },
-  info: { borderColor: tokens.border },
-});
 
 export function Toasts() {
   const [items, setItems] = useState<Toast[]>([]);
@@ -42,19 +13,52 @@ export function Toasts() {
   }, []);
 
   return (
-    <div {...stylex.props(styles.wrap)}>
-      {items.map((item) => (
-        <div
-          key={item.id}
-          {...stylex.props(
-            styles.toast,
-            item.kind === "ok" ? styles.ok : item.kind === "bad" ? styles.bad : styles.info,
-          )}
-          onClick={() => setItems((current) => current.filter((entry) => entry.id !== item.id))}
-        >
-          {item.message}
-        </div>
-      ))}
+    <div
+      style={{
+        position: "fixed",
+        left: "50%",
+        transform: "translateX(-50%)",
+        bottom: "calc(72px + env(safe-area-inset-bottom))",
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        zIndex: 100,
+        width: "min(92vw, 420px)",
+      }}
+    >
+      {items.map((item) => {
+        const bg =
+          item.kind === "ok"
+            ? "var(--md-sys-color-success-container)"
+            : item.kind === "bad"
+              ? "var(--md-sys-color-error-container)"
+              : "var(--md-sys-color-surface-container-high)";
+
+        const color =
+          item.kind === "ok"
+            ? "var(--md-sys-color-on-success-container)"
+            : item.kind === "bad"
+              ? "var(--md-sys-color-on-error-container)"
+              : "var(--md-sys-color-on-surface)";
+
+        return (
+          <div
+            key={item.id}
+            onClick={() => setItems((current) => current.filter((entry) => entry.id !== item.id))}
+            style={{
+              borderRadius: "8px",
+              padding: "12px 16px",
+              fontSize: "14px",
+              backgroundColor: bg,
+              color,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+              cursor: "pointer",
+            }}
+          >
+            {item.message}
+          </div>
+        );
+      })}
     </div>
   );
 }

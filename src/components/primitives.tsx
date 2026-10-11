@@ -1,211 +1,29 @@
-import * as stylex from "@stylexjs/stylex";
-import type { CSSProperties, ReactNode } from "react";
-import { tokens } from "@/theme/tokens.stylex";
+import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
 
-const NBSP = "\u00a0";
-
-const styles = stylex.create({
-  stack: { display: "flex", flexDirection: "column" },
-  row: { display: "flex", flexDirection: "row", alignItems: "center" },
-  wrap: { flexWrap: "wrap" },
-  grow: { flexGrow: 1, minWidth: 0 },
-  card: {
-    backgroundColor: tokens.surface,
-    borderColor: tokens.border,
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderRadius: tokens.radius,
-    boxShadow: tokens.shadow,
-  },
-  button: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: tokens.space2,
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderColor: tokens.border,
-    borderRadius: tokens.radiusSm,
-    backgroundColor: tokens.surfaceRaised,
-    color: tokens.text,
-    cursor: "pointer",
-    paddingBlock: tokens.space2,
-    paddingInline: tokens.space3,
-    fontSize: tokens.fontMd,
-    fontWeight: 500,
-    minHeight: "36px",
-    transitionProperty: "background-color, opacity",
-    transitionDuration: "120ms",
-    ":hover": { backgroundColor: tokens.accentSoft },
-    ":disabled": { opacity: 0.45, cursor: "not-allowed" },
-  },
-  primary: {
-    backgroundColor: tokens.accent,
-    borderColor: tokens.accent,
-    color: "#ffffff",
-    ":hover": { opacity: 0.9, backgroundColor: tokens.accent },
-  },
-  danger: {
-    backgroundColor: "transparent",
-    borderColor: tokens.bad,
-    color: tokens.bad,
-    ":hover": { backgroundColor: tokens.bad, color: "#ffffff" },
-  },
-  ghost: {
-    backgroundColor: "transparent",
-    borderColor: "transparent",
-    ":hover": { backgroundColor: tokens.accentSoft },
-  },
-  small: {
-    minHeight: "28px",
-    paddingBlock: tokens.space1,
-    paddingInline: tokens.space2,
-    fontSize: tokens.fontSm,
-  },
-  badge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: tokens.space1,
-    borderRadius: "999px",
-    paddingBlock: "2px",
-    paddingInline: tokens.space2,
-    fontSize: tokens.fontSm,
-    fontWeight: 600,
-    borderStyle: "solid",
-    borderWidth: 1,
-    whiteSpace: "nowrap",
-  },
-  toneMuted: { color: tokens.textMuted, borderColor: tokens.border, backgroundColor: tokens.surfaceRaised },
-  toneOk: { color: tokens.ok, borderColor: tokens.ok, backgroundColor: "transparent" },
-  toneWarn: { color: tokens.warn, borderColor: tokens.warn, backgroundColor: "transparent" },
-  toneBad: { color: tokens.bad, borderColor: tokens.bad, backgroundColor: "transparent" },
-  toneAccent: { color: tokens.accent, borderColor: tokens.accent, backgroundColor: tokens.accentSoft },
-  field: {
-    backgroundColor: tokens.surface,
-    color: tokens.text,
-    borderColor: tokens.border,
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderRadius: tokens.radiusSm,
-    paddingBlock: tokens.space2,
-    paddingInline: tokens.space2,
-    fontSize: tokens.fontMd,
-    minWidth: 0,
-    ":focus": { outlineColor: tokens.accent, outlineStyle: "solid", outlineWidth: 2 },
-  },
-  label: { fontSize: tokens.fontSm, color: tokens.textMuted, fontWeight: 500 },
-  switch: {
-    position: "relative",
-    width: "46px",
-    height: "26px",
-    borderRadius: "999px",
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderColor: tokens.border,
-    backgroundColor: tokens.surfaceRaised,
-    cursor: "pointer",
-    padding: 0,
-    flexShrink: 0,
-  },
-  switchOn: { backgroundColor: tokens.ok, borderColor: tokens.ok },
-  knob: {
-    position: "absolute",
-    top: "2px",
-    left: "2px",
-    width: "20px",
-    height: "20px",
-    borderRadius: "50%",
-    backgroundColor: "#ffffff",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.4)",
-    transitionProperty: "transform",
-    transitionDuration: "140ms",
-  },
-  knobOn: { transform: "translateX(20px)" },
-  dialogBackdrop: {
-    position: "fixed",
-    inset: 0,
-    backgroundColor: "rgba(6, 10, 16, 0.6)",
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    zIndex: 50,
-    paddingTop: tokens.space4,
-  },
-  dialog: {
-    backgroundColor: tokens.surface,
-    borderColor: tokens.border,
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderRadius: tokens.radius,
-    width: "100%",
-    maxWidth: "720px",
-    maxHeight: "92vh",
-    overflowY: "auto",
-  },
-  dialogHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: tokens.space3,
-    padding: tokens.space4,
-    borderBottomColor: tokens.border,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-    position: "sticky",
-    top: 0,
-    backgroundColor: tokens.surface,
-    zIndex: 1,
-  },
-  dialogBody: { padding: tokens.space4, display: "flex", flexDirection: "column", gap: tokens.space4 },
-  dialogFooter: {
-    display: "flex",
-    gap: tokens.space2,
-    justifyContent: "flex-end",
-    padding: tokens.space4,
-    borderTopColor: tokens.border,
-    borderTopStyle: "solid",
-    borderTopWidth: 1,
-    position: "sticky",
-    bottom: 0,
-    backgroundColor: tokens.surface,
-  },
-  muted: { color: tokens.textMuted },
-  mono: {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-    fontSize: tokens.fontSm,
-    fontVariantNumeric: "tabular-nums",
-  },
-  tabular: { fontVariantNumeric: "tabular-nums" },
-  mark: {
-    backgroundColor: tokens.accentSoft,
-    color: tokens.accent,
-    borderRadius: tokens.radiusSm,
-    paddingInline: tokens.space2,
-    paddingBlock: "2px",
-    cursor: "pointer",
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: tokens.accent,
-  },
-});
-
-function gapStyle(gap: number): CSSProperties {
-  return { gap: `${gap}px` };
+export function Icon({ name, slot }: { name: string; slot?: string }) {
+  return (
+    <span className="material-symbols-outlined" slot={slot}>
+      {name}
+    </span>
+  );
 }
-
-type Gap = 1 | 2 | 3 | 4 | 5 | 6;
 
 export function Stack({
   children,
-  gap = 3,
+  gap = 16,
   style,
+  className = "",
 }: {
   children: ReactNode;
-  gap?: Gap;
+  gap?: number;
   style?: CSSProperties;
+  className?: string;
 }) {
   return (
-    <div {...stylex.props(styles.stack)} style={{ ...gapStyle(gap * 4), ...style }}>
+    <div
+      className={className}
+      style={{ display: "flex", flexDirection: "column", gap: `${gap}px`, ...style }}
+    >
       {children}
     </div>
   );
@@ -213,110 +31,186 @@ export function Stack({
 
 export function Row({
   children,
-  gap = 2,
+  gap = 8,
   wrap,
   justify,
-  align,
+  align = "center",
   style,
+  className = "",
 }: {
   children: ReactNode;
-  gap?: Gap;
+  gap?: number;
   wrap?: boolean;
   justify?: CSSProperties["justifyContent"];
   align?: CSSProperties["alignItems"];
   style?: CSSProperties;
+  className?: string;
 }) {
   return (
     <div
-      {...stylex.props(styles.row, wrap && styles.wrap)}
-      style={{ ...gapStyle(gap * 4), justifyContent: justify, alignItems: align, ...style }}
+      className={className}
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: align,
+        justifyContent: justify,
+        flexWrap: wrap ? "wrap" : "nowrap",
+        gap: `${gap}px`,
+        ...style,
+      }}
     >
       {children}
     </div>
   );
 }
 
+/**
+ * Material Design 3 Card
+ * Can be elevated, filled, or outlined.
+ */
 export function Card({
   children,
+  variant = "elevated",
   style,
   onClick,
 }: {
   children: ReactNode;
+  variant?: "elevated" | "filled" | "outlined";
   style?: CSSProperties;
   onClick?: () => void;
 }) {
+  const bg =
+    variant === "elevated"
+      ? "var(--md-sys-color-surface-container-low)"
+      : variant === "filled"
+        ? "var(--md-sys-color-surface-container)"
+        : "var(--md-sys-color-surface)";
+
+  const border =
+    variant === "outlined" ? "1px solid var(--md-sys-color-outline-variant)" : "none";
+
   return (
-    <div {...stylex.props(styles.card)} style={{ padding: 16, ...style }} onClick={onClick}>
+    <div
+      onClick={onClick}
+      style={{
+        position: "relative",
+        backgroundColor: bg,
+        borderRadius: "16px",
+        padding: "16px",
+        border,
+        boxShadow: variant === "elevated" ? "0 1px 3px rgba(0,0,0,0.1)" : undefined,
+        cursor: onClick ? "pointer" : undefined,
+        ...style,
+      }}
+    >
+      {variant === "elevated" ? <md-elevation /> : null}
       {children}
     </div>
   );
 }
 
+/**
+ * Official Material Design 3 Buttons
+ */
 export function Button({
   children,
   onClick,
-  variant = "default",
-  size,
+  variant = "filled",
   disabled,
   title,
   type = "button",
-  grow,
+  icon,
 }: {
-  children: ReactNode;
+  children?: ReactNode;
   onClick?: () => void;
-  variant?: "default" | "primary" | "danger" | "ghost";
-  size?: "small";
+  variant?: "filled" | "tonal" | "outlined" | "text" | "elevated" | "danger";
+  size?: "small" | "medium";
   disabled?: boolean;
   title?: string;
   type?: "button" | "submit";
-  grow?: boolean;
+  icon?: string;
 }) {
+  const iconEl = icon ? <Icon slot="icon" name={icon} /> : null;
+
+  if (variant === "tonal") {
+    return (
+      <md-filled-tonal-button disabled={disabled} title={title} type={type} onClick={onClick}>
+        {iconEl}
+        {children}
+      </md-filled-tonal-button>
+    );
+  }
+  if (variant === "outlined") {
+    return (
+      <md-outlined-button disabled={disabled} title={title} type={type} onClick={onClick}>
+        {iconEl}
+        {children}
+      </md-outlined-button>
+    );
+  }
+  if (variant === "text") {
+    return (
+      <md-text-button disabled={disabled} title={title} type={type} onClick={onClick}>
+        {iconEl}
+        {children}
+      </md-text-button>
+    );
+  }
+  if (variant === "elevated") {
+    return (
+      <md-elevated-button disabled={disabled} title={title} type={type} onClick={onClick}>
+        {iconEl}
+        {children}
+      </md-elevated-button>
+    );
+  }
+  if (variant === "danger") {
+    return (
+      <md-filled-button
+        style={{
+          "--md-filled-button-container-color": "var(--md-sys-color-error)",
+          "--md-filled-button-label-text-color": "var(--md-sys-color-on-error)",
+        } as CSSProperties}
+        disabled={disabled}
+        title={title}
+        type={type}
+        onClick={onClick}
+      >
+        {iconEl}
+        {children}
+      </md-filled-button>
+    );
+  }
   return (
-    <button
-      type={type}
-      title={title}
-      disabled={disabled}
-      onClick={onClick}
-      {...stylex.props(
-        styles.button,
-        variant === "primary" && styles.primary,
-        variant === "danger" && styles.danger,
-        variant === "ghost" && styles.ghost,
-        size === "small" && styles.small,
-        grow && styles.grow,
-      )}
-    >
+    <md-filled-button disabled={disabled} title={title} type={type} onClick={onClick}>
+      {iconEl}
       {children}
-    </button>
+    </md-filled-button>
   );
 }
 
-export function Badge({
-  children,
-  tone = "muted",
+export function IconButton({
+  icon,
+  onClick,
   title,
+  disabled,
 }: {
-  children: ReactNode;
-  tone?: "muted" | "ok" | "warn" | "bad" | "accent";
+  icon: string;
+  onClick?: () => void;
   title?: string;
+  disabled?: boolean;
 }) {
-  const toneStyle =
-    tone === "ok"
-      ? styles.toneOk
-      : tone === "warn"
-        ? styles.toneWarn
-        : tone === "bad"
-          ? styles.toneBad
-          : tone === "accent"
-            ? styles.toneAccent
-            : styles.toneMuted;
   return (
-    <span title={title} {...stylex.props(styles.badge, toneStyle)}>
-      {children}
-    </span>
+    <md-icon-button disabled={disabled} title={title} onClick={onClick}>
+      <Icon name={icon} />
+    </md-icon-button>
   );
 }
 
+/**
+ * Material Design 3 Switch
+ * Uses official <md-switch> web component with real M3 ripple and physics
+ */
 export function Switch({
   checked,
   onChange,
@@ -328,25 +222,34 @@ export function Switch({
   disabled?: boolean;
   label: string;
 }) {
+  const ref = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handleChange = () => {
+      // @ts-expect-error selected exists on MdSwitch
+      onChange(Boolean(el.selected));
+    };
+    el.addEventListener("change", handleChange);
+    return () => el.removeEventListener("change", handleChange);
+  }, [onChange]);
+
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
+    <md-switch
+      ref={ref}
+      selected={checked}
+      icons
+      showOnlySelectedIcon
       disabled={disabled}
-      onClick={() => onChange(!checked)}
-      {...stylex.props(styles.switch, checked && styles.switchOn)}
-    >
-      <span {...stylex.props(styles.knob, checked && styles.knobOn)} />
-    </button>
+      aria-label={label}
+    />
   );
 }
 
-export function Label({ children }: { children: ReactNode }) {
-  return <span {...stylex.props(styles.label)}>{children}</span>;
-}
-
+/**
+ * Official Material Design 3 Text Field
+ */
 export function TextField({
   value,
   onChange,
@@ -356,8 +259,8 @@ export function TextField({
   min,
   max,
   step,
-  list,
   style,
+  leadingIcon,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -367,27 +270,42 @@ export function TextField({
   min?: number;
   max?: number;
   step?: number;
-  list?: string;
   style?: CSSProperties;
+  leadingIcon?: string;
 }) {
+  const ref = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handleInput = (e: Event) => {
+      // @ts-expect-error value on input
+      onChange((e.target as { value: string }).value);
+    };
+    el.addEventListener("input", handleInput);
+    return () => el.removeEventListener("input", handleInput);
+  }, [onChange]);
+
   return (
-    <label {...stylex.props(styles.stack)} style={{ gap: 4, ...style }}>
-      {label ? <span {...stylex.props(styles.label)}>{label}</span> : null}
-      <input
-        {...stylex.props(styles.field)}
-        type={type}
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        list={list}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
+    <md-outlined-text-field
+      ref={ref}
+      label={label}
+      value={value}
+      type={type}
+      placeholder={placeholder}
+      min={min}
+      max={max}
+      step={step}
+      style={{ width: "100%", ...style }}
+    >
+      {leadingIcon ? <Icon slot="leading-icon" name={leadingIcon} /> : null}
+    </md-outlined-text-field>
   );
 }
 
+/**
+ * Official Material Design 3 Outlined Select
+ */
 export function Select({
   value,
   onChange,
@@ -401,47 +319,122 @@ export function Select({
   label?: string;
   disabled?: boolean;
 }) {
+  const ref = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handleChange = () => {
+      // @ts-expect-error value on select
+      onChange(el.value);
+    };
+    el.addEventListener("change", handleChange);
+    return () => el.removeEventListener("change", handleChange);
+  }, [onChange]);
+
   return (
-    <label {...stylex.props(styles.stack)} style={{ gap: 4 }}>
-      {label ? <span {...stylex.props(styles.label)}>{label}</span> : null}
-      <select
-        {...stylex.props(styles.field)}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <md-outlined-select ref={ref} label={label} value={value} disabled={disabled}>
+      {options.map((opt) => (
+        <md-select-option key={opt.value} value={opt.value} headline={opt.label} selected={opt.value === value}>
+          <div slot="headline">{opt.label}</div>
+        </md-select-option>
+      ))}
+    </md-outlined-select>
   );
 }
 
-export function Muted({ children }: { children: ReactNode }) {
-  return <span {...stylex.props(styles.muted)}>{children}</span>;
-}
-
-export function Mono({ children }: { children: ReactNode }) {
-  return <span {...stylex.props(styles.mono)}>{children}</span>;
-}
-
-export function Tabular({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+/**
+ * Official Material Design 3 Filter Chip
+ */
+export function Chip({
+  children,
+  onClick,
+  active,
+  title,
+  icon,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+  title?: string;
+  icon?: string;
+}) {
   return (
-    <span {...stylex.props(styles.tabular)} style={style}>
+    <md-filter-chip
+      selected={active}
+      label={typeof children === "string" ? children : undefined}
+      title={title}
+      onClick={onClick}
+    >
+      {icon ? <Icon slot="icon" name={icon} /> : null}
+      {typeof children !== "string" ? children : null}
+    </md-filter-chip>
+  );
+}
+
+/**
+ * Material Badge
+ */
+export function Badge({
+  children,
+  tone = "muted",
+  title,
+}: {
+  children: ReactNode;
+  tone?: "muted" | "ok" | "warn" | "bad" | "accent";
+  title?: string;
+}) {
+  const bg =
+    tone === "ok"
+      ? "var(--md-sys-color-success-container)"
+      : tone === "warn"
+        ? "var(--md-sys-color-warning-container)"
+        : tone === "bad"
+          ? "var(--md-sys-color-error-container)"
+          : tone === "accent"
+            ? "var(--md-sys-color-primary-container)"
+            : "var(--md-sys-color-surface-container-highest)";
+
+  const color =
+    tone === "ok"
+      ? "var(--md-sys-color-on-success-container)"
+      : tone === "warn"
+        ? "var(--md-sys-color-on-warning-container)"
+        : tone === "bad"
+          ? "var(--md-sys-color-on-error-container)"
+          : tone === "accent"
+            ? "var(--md-sys-color-on-primary-container)"
+            : "var(--md-sys-color-on-surface-variant)";
+
+  return (
+    <span
+      title={title}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        padding: "2px 10px",
+        borderRadius: "9999px",
+        fontSize: "12px",
+        fontWeight: 500,
+        backgroundColor: bg,
+        color,
+        whiteSpace: "nowrap",
+      }}
+    >
       {children}
     </span>
   );
 }
 
+/**
+ * Official Material Design 3 Dialog
+ */
 export function Dialog({
   title,
   children,
   footer,
   onClose,
-  wide,
 }: {
   title: ReactNode;
   children: ReactNode;
@@ -449,46 +442,26 @@ export function Dialog({
   onClose: () => void;
   wide?: boolean;
 }) {
-  return (
-    <div {...stylex.props(styles.dialogBackdrop)} onClick={onClose}>
-      <div
-        {...stylex.props(styles.dialog)}
-        style={wide ? { maxWidth: "900px" } : undefined}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div {...stylex.props(styles.dialogHeader)}>
-          <strong>{title}</strong>
-          <Button variant="ghost" size="small" onClick={onClose} title="Close">
-            ✕
-          </Button>
-        </div>
-        <div {...stylex.props(styles.dialogBody)}>{children}</div>
-        {footer ? <div {...stylex.props(styles.dialogFooter)}>{footer}</div> : null}
-      </div>
-    </div>
-  );
-}
+  const ref = useRef<HTMLElement | null>(null);
 
-export function Chip({
-  children,
-  onClick,
-  active,
-  title,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  active?: boolean;
-  title?: string;
-}) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // @ts-expect-error open on dialog
+    el.open = true;
+    const handleClose = () => onClose();
+    el.addEventListener("close", handleClose);
+    return () => el.removeEventListener("close", handleClose);
+  }, [onClose]);
+
   return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      {...stylex.props(styles.button, styles.small, active ? styles.toneAccent : styles.ghost)}
-    >
-      {children}
-    </button>
+    <md-dialog ref={ref} open>
+      <div slot="headline">{title}</div>
+      <div slot="content" style={{ display: "flex", flexDirection: "column", gap: "16px", minWidth: "320px" }}>
+        {children}
+      </div>
+      <div slot="actions">{footer}</div>
+    </md-dialog>
   );
 }
 
@@ -502,24 +475,37 @@ export function Toggle({
   label: string;
 }) {
   return (
-    <Row gap={2}>
+    <Row gap={8}>
       <Switch checked={checked} onChange={onChange} label={label} />
-      <span>{label}</span>
+      <span style={{ fontSize: "14px" }}>{label}</span>
     </Row>
   );
 }
 
-export function Spinner() {
-  return <span {...stylex.props(styles.muted)}>Loading…</span>;
+export function Label({ children }: { children: ReactNode }) {
+  return <span style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)", fontWeight: 500 }}>{children}</span>;
+}
+
+export function Muted({ children }: { children: ReactNode }) {
+  return <span style={{ color: "var(--md-sys-color-on-surface-variant)", fontSize: "13px" }}>{children}</span>;
+}
+
+export function Mono({ children }: { children: ReactNode }) {
+  return <span style={{ fontFamily: "Roboto Mono, monospace", fontSize: "13px" }}>{children}</span>;
+}
+
+export function Tabular({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return <span style={{ fontVariantNumeric: "tabular-nums", ...style }}>{children}</span>;
 }
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <div {...stylex.props(styles.muted)} style={{ padding: 24, textAlign: "center" }}>
+    <div style={{ padding: "48px 16px", textAlign: "center", color: "var(--md-sys-color-on-surface-variant)" }}>
       {children}
     </div>
   );
 }
 
-export const nbsp = NBSP;
-export const primitiveStyles = styles;
+export function Spinner() {
+  return <md-circular-progress indeterminate />;
+}

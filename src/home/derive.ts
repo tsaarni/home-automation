@@ -28,6 +28,8 @@ export interface Reading {
   min?: number | null;
   max?: number | null;
   step?: number;
+  /** quick "on for ..." choices, in the house's units */
+  hold?: boolean;
   options?: unknown[];
   /** schedules that write this attribute */
   schedules: string[];
@@ -113,25 +115,28 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
 
   const built: Thing[] = devices.map((device) => {
     const meta = things[device.id];
-    const crowded = Object.keys(device.attributes).length > 6;
-    const hidden = new Set([...(meta?.hide ?? []), ...(crowded ? NOISY_ATTRIBUTES : [])]);
+    const hidden = new Set([...(meta?.hide ?? []), ...NOISY_ATTRIBUTES]);
     const attrs = Object.keys(device.attributes);
+    const allHidden = !meta && attrs.length > 0 && attrs.every((attr) => hidden.has(attr));
     const ordered = [...new Set([...(meta?.primary ?? []), ...PRIMARY_PREFERENCE, ...attrs])].filter((attr) =>
       attrs.includes(attr),
     );
 
     const readings: Reading[] = [];
     for (const attr of ordered) {
-      if (hidden.has(attr)) continue;
+      const isCurated =
+        meta?.primary?.includes(attr) || meta?.controls?.some((control) => control.attr === attr);
+      if (hidden.has(attr) && !isCurated && !allHidden) continue;
       const spec = device.attributes[attr];
       if (!spec) continue;
       const state = device.state[attr];
       const isControl = Boolean(spec.write) && !device.locked;
       const switches = switchValues(device, attr);
+      const curatedControl = meta?.controls.find((control) => control.attr === attr);
       readings.push({
         device: device.id,
         attr,
-        label: meta?.controls.find((control) => control.attr === attr)?.label ?? attrLabel(attr),
+        label: meta?.labels?.[attr] ?? curatedControl?.label ?? attrLabel(attr),
         value: state?.value,
         unit: displayUnit(spec.unit),
         ts: state?.ts ?? null,
@@ -141,7 +146,8 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
         off: switches.off,
         min: spec.limits?.[0] ?? null,
         max: spec.limits?.[1] ?? null,
-        step: meta?.controls.find((control) => control.attr === attr)?.step ?? 0.5,
+        step: curatedControl?.step ?? 0.5,
+        hold: curatedControl?.hold,
         options: spec.enum ?? undefined,
         schedules: writersByAttribute.get(`${device.id}\u0000${attr}`) ?? [],
         isControl,
@@ -155,6 +161,23 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
       ? readings.filter((reading) => curatedPrimary.includes(reading.attr))
       : readings.slice(0, 2);
 
+    const controls: Reading[] = meta?.controls
+      ? meta.controls.flatMap((control) => {
+          const reading = readings.find((r) => r.attr === control.attr);
+          if (!reading || !reading.isControl) return [];
+          return [
+            {
+              ...reading,
+              label: control.label ?? reading.label,
+              step: control.step ?? reading.step,
+              on: control.on ?? reading.on,
+              off: control.off ?? reading.off,
+              hold: control.hold ?? reading.hold,
+            },
+          ];
+        })
+      : readings.filter((reading) => reading.isControl);
+
     return {
       id: device.id,
       name: meta?.name ?? device.name ?? humanize(device.id),
@@ -163,7 +186,7 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
       locked: device.locked,
       readings,
       primary,
-      controls: readings.filter((reading) => reading.isControl),
+      controls,
       waiting: readings.every((reading) => !reading.known),
       referencedBy: device.referenced_by,
     };

@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { buildHome } from "@/home/derive";
 import { makeNames, type Names } from "@/home/names";
 import { durationWords, makeTime, type TimeHelpers } from "@/lib/format";
 import { writeSentence } from "@/lib/reasons";
 import { notify } from "@/lib/toast";
 import { ApiError, api, type WriteBody } from "./client";
-import { pollEvents } from "./events";
+import { pollEvents, subscribeEventStream } from "./events";
 import type {
   Device,
   Event,
@@ -58,9 +58,19 @@ export function useTimers() {
   return useQuery({ queryKey: keys.timers, queryFn: api.timers, refetchInterval: 5000 });
 }
 
-/** The rolling event window: a full slice once, then deltas. */
+/** The rolling event window: a full slice once, then SSE stream with polling fallback. */
 export function useEvents() {
-  return useQuery({ queryKey: keys.events, queryFn: pollEvents, refetchInterval: 2000 });
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const unsubscribe = subscribeEventStream(() => {
+      // Invalidate to re-read buffered events immediately
+      queryClient.invalidateQueries({ queryKey: keys.events });
+    });
+    return unsubscribe;
+  }, [queryClient]);
+
+  return useQuery({ queryKey: keys.events, queryFn: pollEvents, refetchInterval: 5000 });
 }
 
 export function useTime(): TimeHelpers {

@@ -1,4 +1,3 @@
-import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useEvents, useNames, useRules, useTime } from "@/api/queries";
@@ -14,24 +13,7 @@ import {
   writeSentence,
 } from "@/lib/reasons";
 import { buildRuns, type Run } from "@/lib/runs";
-import { tokens } from "@/theme/tokens.stylex";
 
-const styles = stylex.create({
-  row: {
-    display: "flex",
-    gap: tokens.space3,
-    alignItems: "baseline",
-    paddingBlock: tokens.space2,
-    borderBottomColor: tokens.border,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-  },
-  time: { fontVariantNumeric: "tabular-nums", color: tokens.textMuted, minWidth: "72px" },
-  body: { flexGrow: 1, minWidth: 0 },
-  pre: { overflowX: "auto", fontSize: 12, maxHeight: "260px" },
-});
-
-/** What happened, and what is about to happen (§5.3). */
 export function ActivityScreen() {
   const events = useEvents().data ?? [];
   const rules = useRules().data ?? [];
@@ -40,6 +22,7 @@ export function ActivityScreen() {
   const [window, setWindow] = useState("24h");
   const [showNoise, setShowNoise] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(100);
 
   const allRuns = useMemo(() => buildRuns(events), [events]);
 
@@ -59,14 +42,14 @@ export function ActivityScreen() {
   return (
     <div>
       <StatusHeader />
-      <Stack gap={4}>
-        <Card>
-          <Row gap={2} wrap>
+      <Stack gap={20}>
+        <Card variant="filled">
+          <Row gap={12} wrap>
             <Select
               value={ruleFilter}
               onChange={setRuleFilter}
               options={[
-                { value: "", label: "every schedule" },
+                { value: "", label: "All schedules" },
                 ...rules.map((rule) => ({ value: rule.id, label: rule.name ?? rule.id })),
               ]}
             />
@@ -74,31 +57,31 @@ export function ActivityScreen() {
               value={outcomeFilter}
               onChange={setOutcomeFilter}
               options={[
-                { value: "", label: "any outcome" },
-                { value: "ran", label: "ran" },
-                { value: "nothing", label: "nothing to do" },
-                { value: "skipped", label: "skipped" },
-                { value: "failed", label: "failed" },
-                { value: "manual", label: "manual" },
+                { value: "", label: "Any outcome" },
+                { value: "ran", label: "Auto (schedules)" },
+                { value: "manual", label: "Manual (you)" },
+                { value: "nothing", label: "Unchanged" },
+                { value: "skipped", label: "Skipped" },
+                { value: "failed", label: "Failed" },
               ]}
             />
             <Select
               value={window}
               onChange={setWindow}
               options={[
-                { value: "1h", label: "last hour" },
-                { value: "6h", label: "last 6 hours" },
-                { value: "24h", label: "last 24 hours" },
-                { value: "168h", label: "last 7 days" },
+                { value: "1h", label: "Past 1 hour" },
+                { value: "6h", label: "Past 6 hours" },
+                { value: "24h", label: "Past 24 hours" },
+                { value: "168h", label: "Past 7 days" },
               ]}
             />
-            <Toggle checked={showNoise} onChange={setShowNoise} label="readings & timers" />
+            <Toggle checked={showNoise} onChange={setShowNoise} label="Include telemetry & timers" />
           </Row>
         </Card>
 
-        <Card>
-          <Stack gap={1}>
-            {runs.map((run) => (
+        <Card variant="elevated">
+          <Stack gap={0}>
+            {runs.slice(0, displayLimit).map((run) => (
               <RunRow
                 key={run.id}
                 run={run}
@@ -106,7 +89,14 @@ export function ActivityScreen() {
                 onToggle={() => setOpen(open === run.id ? null : run.id)}
               />
             ))}
-            {runs.length === 0 ? <Empty>nothing happened in this window</Empty> : null}
+            {runs.length === 0 ? <Empty>No events recorded in this time range.</Empty> : null}
+            {runs.length > displayLimit ? (
+              <Row justify="center" style={{ paddingTop: "16px" }}>
+                <Button variant="tonal" onClick={() => setDisplayLimit((n) => n + 100)}>
+                  Show 100 more events ({runs.length - displayLimit} remaining)
+                </Button>
+              </Row>
+            ) : null}
           </Stack>
         </Card>
 
@@ -129,31 +119,82 @@ function RunRow({ run, open, onToggle }: { run: Run; open: boolean; onToggle: ()
           : "warn";
 
   return (
-    <div {...stylex.props(styles.row)}>
-      <span {...stylex.props(styles.time)}>{time.stamp(run.ts)}</span>
-      <Badge tone={tone}>{outcomeLabel(run.outcome)}</Badge>
-      <div {...stylex.props(styles.body)}>
-        <Row gap={2} wrap>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        gap: "14px",
+        padding: "14px 0",
+        borderBottom: "1px solid var(--md-sys-color-outline-variant)",
+        flexWrap: "wrap",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "Roboto Mono, monospace",
+          fontSize: "13px",
+          color: "var(--md-sys-color-on-surface-variant)",
+          width: "60px",
+          flexShrink: 0,
+        }}
+      >
+        {time.stamp(run.ts)}
+      </span>
+      <div style={{ width: "88px", display: "flex", justifyContent: "flex-start", flexShrink: 0 }}>
+        <Badge tone={tone}>{outcomeLabel(run.outcome)}</Badge>
+      </div>
+      <div style={{ flex: 1, minWidth: "260px", display: "flex", flexDirection: "column", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           {run.rule ? (
-            <Link to={`/schedules/${encodeURIComponent(run.rule)}`} style={{ fontWeight: 600 }}>
+            <Link
+              to={`/schedules/${encodeURIComponent(run.rule)}`}
+              style={{ fontWeight: 600, color: "var(--md-sys-color-primary)" }}
+            >
               {names.rule(run.rule)}
             </Link>
           ) : (
-            <strong>{run.outcome === "manual" ? "You" : "System"}</strong>
+            <strong>{run.outcome === "manual" ? "User Action" : "System Core"}</strong>
           )}
-          <span>{summary(run, names)}</span>
-          <Button size="small" variant="ghost" onClick={onToggle} title="details">
-            {open ? "hide" : "details"}
-          </Button>
-        </Row>
+          <span style={{ color: "var(--md-sys-color-on-surface)", fontSize: "14px" }}>
+            {summary(run, names)}
+          </span>
+          <button
+            type="button"
+            onClick={onToggle}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--md-sys-color-primary)",
+              fontWeight: 500,
+              fontSize: "13px",
+              cursor: "pointer",
+              padding: "4px 8px",
+              borderRadius: "4px",
+            }}
+          >
+            {open ? "Hide details" : "Details"}
+          </button>
+        </div>
+
         {open ? (
-          <Stack gap={2} style={{ marginTop: 8 }}>
+          <div
+            style={{
+              marginTop: "4px",
+              padding: "12px",
+              borderRadius: "8px",
+              backgroundColor: "var(--md-sys-color-surface-container)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              fontSize: "13px",
+            }}
+          >
             {triggerSentence(run.event, names) ? (
-              <Muted>triggered by {triggerSentence(run.event, names)}</Muted>
+              <Muted>Trigger: {triggerSentence(run.event, names)}</Muted>
             ) : null}
             {run.writes.map((write, index) => (
               <div key={`${write.ts}-${index}`}>
-                ·{" "}
+                •{" "}
                 {writeSentence(
                   {
                     device: write.device ?? "",
@@ -168,15 +209,27 @@ function RunRow({ run, open, onToggle }: { run: Run; open: boolean; onToggle: ()
               </div>
             ))}
             {run.publishes.map((publish, index) => (
-              <Muted key={`${publish.ts}-${index}`}>· sent a message to {publish.topic}</Muted>
+              <Muted key={`${publish.ts}-${index}`}>• Published to MQTT topic {publish.topic}</Muted>
             ))}
             <details>
-              <summary>raw events</summary>
-              <pre {...stylex.props(styles.pre)}>
+              <summary style={{ cursor: "pointer", fontSize: "12px", marginTop: "4px" }}>
+                Raw telemetry payloads
+              </summary>
+              <pre
+                style={{
+                  fontFamily: "Roboto Mono, monospace",
+                  fontSize: "11px",
+                  maxHeight: "240px",
+                  overflowX: "auto",
+                  padding: "8px",
+                  borderRadius: "8px",
+                  backgroundColor: "var(--md-sys-color-surface-container-lowest)",
+                }}
+              >
                 {JSON.stringify([run.event, ...run.writes, ...run.publishes], null, 2)}
               </pre>
             </details>
-          </Stack>
+          </div>
         ) : null}
       </div>
     </div>
@@ -188,7 +241,7 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
     case "ran":
     case "manual": {
       if (!run.writes.length)
-        return run.publishes.length ? "sent a message" : "nothing to do — the values were already right";
+        return run.publishes.length ? "sent message" : "values already satisfied";
       return run.writes
         .map((write) => {
           const thing = names.device(write.device);
@@ -202,7 +255,7 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
           if (write.status === "unchanged") return `${thing}${label} already ${value}`;
           if (write.status === "dry-run")
             return switchy
-              ? `would turn ${thing} ${value} (dry run)`
+              ? `would set ${thing} ${value} (dry run)`
               : `would set ${thing}${label} to ${value} (dry run)`;
           return `${thing}${label} → ${value}${was}`;
         })
@@ -215,9 +268,9 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
     case "nothing":
       return "nothing to do";
     case "consumed":
-      return "one-shot schedule deleted after running";
+      return "one-shot schedule deleted after execution";
     case "conflict":
-      return "two schedules wanted the same value; one won by priority";
+      return "priority arbitration between concurrent schedules";
     case "reading":
       return `${names.device(run.event.device)} ${names.attr(run.event.device ?? "", run.event.attr ?? "").toLowerCase()} = ${names.value(run.event.device, run.event.attr, run.event.value)}`;
     case "pending":

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router";
 import { router } from "./App";
 import { Toasts } from "./components/Toasts";
+import "./material";
 import "./theme/global.css";
 
 const queryClient = new QueryClient({

@@ -1,25 +1,9 @@
-import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
 import { useNames, useTime } from "@/api/queries";
-import { Badge, Muted, Row } from "@/components/primitives";
+import { Badge, Muted, Stack } from "@/components/primitives";
 import { outcomeLabel } from "@/lib/reasons";
 import type { Run } from "@/lib/runs";
-import { tokens } from "@/theme/tokens.stylex";
 
-const styles = stylex.create({
-  row: {
-    display: "flex",
-    gap: tokens.space2,
-    alignItems: "baseline",
-    paddingBlock: tokens.space1,
-    borderBottomColor: tokens.border,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-  },
-  time: { fontVariantNumeric: "tabular-nums", minWidth: "46px", color: tokens.textMuted },
-});
-
-/** Per-day history for one schedule: "did it run this week?" in one glance (§5.3). */
 export function History({ runs, days = 7 }: { runs: Run[]; days?: number }) {
   const time = useTime();
   const names = useNames();
@@ -35,38 +19,68 @@ export function History({ runs, days = 7 }: { runs: Run[]; days?: number }) {
     return [...buckets.entries()].slice(0, days);
   }, [runs, time, days]);
 
-  if (!grouped.length) return <Muted>no runs in the last {days} days</Muted>;
+  if (!grouped.length) return <Muted>No runs recorded in the last {days} days.</Muted>;
 
   return (
-    <div>
+    <Stack gap={12}>
       {grouped.map(([day, dayRuns]) => (
-        <div key={day}>
-          <Row gap={2}>
+        <div
+          key={day}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+            padding: "10px",
+            backgroundColor: "var(--md-sys-color-surface-container)",
+            borderRadius: "8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <strong>{day}</strong>
-            <Muted>
+            <Badge tone="muted">
               {dayRuns.length} run{dayRuns.length === 1 ? "" : "s"}
-            </Muted>
-          </Row>
-          {dayRuns.map((run) => (
-            <div key={run.id} {...stylex.props(styles.row)}>
-              <span {...stylex.props(styles.time)}>{time.clock(run.ts)}</span>
-              <Badge tone={run.outcome === "ran" ? "ok" : run.outcome === "failed" ? "bad" : "warn"}>
-                {outcomeLabel(run.outcome)}
-              </Badge>
-              <span>
-                {run.writes.length
-                  ? run.writes
-                      .map(
-                        (write) =>
-                          `${names.device(write.device)} ${names.attr(write.device ?? "", write.attr ?? "").toLowerCase()} → ${names.value(write.device, write.attr, write.value)}`,
-                      )
-                      .join(", ")
-                  : (run.error ?? run.reason ?? "nothing to do")}
-              </span>
-            </div>
-          ))}
+            </Badge>
+          </div>
+          <Stack gap={4}>
+            {dayRuns.map((run) => (
+              <div
+                key={run.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "13px",
+                  padding: "4px 0",
+                  borderBottom: "1px solid var(--md-sys-color-outline-variant)",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "Roboto Mono, monospace",
+                    color: "var(--md-sys-color-on-surface-variant)",
+                    minWidth: "46px",
+                  }}
+                >
+                  {time.clock(run.ts)}
+                </span>
+                <Badge tone={run.outcome === "ran" ? "ok" : run.outcome === "failed" ? "bad" : "warn"}>
+                  {outcomeLabel(run.outcome)}
+                </Badge>
+                <span style={{ color: "var(--md-sys-color-on-surface)" }}>
+                  {run.writes.length
+                    ? run.writes
+                        .map(
+                          (write) =>
+                            `${names.device(write.device)} ${names.attr(write.device ?? "", write.attr ?? "").toLowerCase()} → ${names.value(write.device, write.attr, write.value)}`,
+                        )
+                        .join(", ")
+                    : (run.error ?? run.reason ?? "nothing to do")}
+                </span>
+              </div>
+            ))}
+          </Stack>
         </div>
       ))}
-    </div>
+    </Stack>
   );
 }

@@ -65,9 +65,9 @@ export function rowOf(event: Event): Outcome {
 export function outcomeLabel(outcome: Outcome): string {
   switch (outcome) {
     case "ran":
-      return "Ran";
+      return "Auto";
     case "nothing":
-      return "Nothing to do";
+      return "Unchanged";
     case "skipped":
       return "Skipped";
     case "failed":

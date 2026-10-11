@@ -1,4 +1,3 @@
-import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
 import { useDevices, useGroups, useNames, useSaveRule } from "@/api/queries";
 import type { Attribute, Device, Group, Rule, Scalar, Term } from "@/api/types";
@@ -7,6 +6,7 @@ import {
   Button,
   Chip,
   Dialog,
+  Icon,
   Label,
   Muted,
   Row,
@@ -33,31 +33,6 @@ import {
   type Trigger,
   unrepresentable,
 } from "@/lib/schedule";
-import { tokens } from "@/theme/tokens.stylex";
-
-const styles = stylex.create({
-  section: {
-    borderColor: tokens.border,
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderRadius: tokens.radiusSm,
-    padding: tokens.space3,
-    display: "flex",
-    flexDirection: "column",
-    gap: tokens.space3,
-  },
-  clause: {
-    display: "flex",
-    flexDirection: "column",
-    gap: tokens.space2,
-    paddingTop: tokens.space2,
-    borderTopColor: tokens.border,
-    borderTopStyle: "solid",
-    borderTopWidth: 1,
-  },
-  sentence: { fontSize: tokens.fontLg, fontWeight: 600 },
-  problem: { color: tokens.bad, fontSize: tokens.fontSm },
-});
 
 interface Draft {
   schedule: ParsedSchedule;
@@ -96,7 +71,6 @@ function draftFor(rule: Rule | null): Draft {
   };
 }
 
-/** A placeholder document for a brand new schedule; `applySchedule` overwrites when/then. */
 function newRuleDoc(id: string): Rule {
   return {
     id,
@@ -109,7 +83,6 @@ function newRuleDoc(id: string): Rule {
   } as Rule;
 }
 
-/** The three-section builder (§5.2). Everything it cannot show opens in raw mode instead. */
 export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose: () => void }) {
   const devices = useDevices().data ?? [];
   const groups = useGroups().data ?? [];
@@ -125,7 +98,7 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
     [devices],
   );
 
-  const problems = useMemo(() => validate(draft, devices), [draft, devices]);
+  const problems = useMemo(() => validate(draft), [draft]);
   const description = useMemo(() => describeSchedule(draft.schedule, names), [draft.schedule, names]);
   const suggestedName = description.sentence;
 
@@ -146,7 +119,7 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
       const document = JSON.parse(raw) as Rule;
       save.mutate(document, { onSuccess: onClose });
     } catch (error) {
-      problems.push(`not valid JSON: ${(error as Error).message}`);
+      problems.push(`Invalid JSON: ${(error as Error).message}`);
     }
   };
 
@@ -169,47 +142,81 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
   return (
     <Dialog
       wide
-      title={rule ? `Edit: ${rule.name ?? rule.id}` : "New schedule"}
+      title={rule ? `Edit: ${rule.name ?? rule.id}` : "New Schedule"}
       onClose={onClose}
       footer={
         <>
-          {problems.length ? <span {...stylex.props(styles.problem)}>{problems[0]}</span> : null}
-          <Button variant="ghost" onClick={onClose}>
-            cancel
+          {problems.length > 0 ? (
+            <span style={{ color: "var(--md-sys-color-error)", fontSize: "13px", marginRight: "auto" }}>
+              {problems[0]}
+            </span>
+          ) : null}
+          <Button variant="text" onClick={onClose}>
+            Cancel
           </Button>
           <Button
-            variant="primary"
+            variant="filled"
             onClick={submit}
             disabled={save.isPending || (!rawMode && problems.length > 0)}
           >
-            save
+            Save Schedule
           </Button>
         </>
       }
     >
-      {rawReasons.length ? (
-        <Badge tone="warn">This schedule uses {rawReasons.join(", ")} — edit it as JSON below.</Badge>
+      {rawReasons.length > 0 ? (
+        <Badge tone="warn">This schedule contains advanced rules ({rawReasons.join(", ")}) — editing raw JSON.</Badge>
       ) : null}
 
       {!rawMode ? (
-        <>
-          <div {...stylex.props(styles.sentence)}>{description.sentence}</div>
+        <Stack gap={16}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "12px 16px",
+              borderRadius: "12px",
+              backgroundColor: "var(--md-sys-color-primary-container)",
+              color: "var(--md-sys-color-on-primary-container)",
+              fontWeight: 600,
+              fontSize: "15px",
+            }}
+          >
+            <Icon name="auto_awesome" />
+            <span>{description.sentence}</span>
+          </div>
 
-          <div {...stylex.props(styles.section)}>
-            <strong>When</strong>
-            <Row gap={2} wrap>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              padding: "16px",
+              borderRadius: "12px",
+              backgroundColor: "var(--md-sys-color-surface-container)",
+              border: "1px solid var(--md-sys-color-outline-variant)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Icon name="alarm" />
+              <strong>When (Trigger)</strong>
+            </div>
+
+            <Row gap={8} wrap>
               {(
                 [
-                  ["at", "At a time"],
-                  ["sun", "At sun"],
-                  ["state", "When a reading changes"],
-                  ["every", "Every"],
+                  ["at", "Clock Time", "schedule"],
+                  ["sun", "Solar Position", "wb_sunny"],
+                  ["state", "Device Reading", "sensors"],
+                  ["every", "Interval", "repeat"],
                 ] as const
-              ).map(([key, label]) => (
+              ).map(([key, label, iconName]) => (
                 <Chip
                   key={key}
                   active={kindOfTrigger(draft.schedule.when) === key}
                   onClick={() => updateTrigger(switchTrigger(draft.schedule.when, key))}
+                  icon={iconName}
                 >
                   {label}
                 </Chip>
@@ -223,20 +230,32 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
               names={names}
             />
 
-            <Row gap={3} wrap>
-              <Row gap={2}>
-                <Switch checked={draft.once} onChange={(next) => update({ once: next })} label="one-shot" />
-                <span>One-shot: delete this schedule after it runs</span>
-              </Row>
+            <Row gap={12} wrap>
+              <Switch checked={draft.once} onChange={(next) => update({ once: next })} label="One-shot schedule" />
+              <span>One-shot: delete schedule immediately after it fires</span>
             </Row>
           </div>
 
-          <div {...stylex.props(styles.section)}>
-            <Row justify="space-between">
-              <strong>Do</strong>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              padding: "16px",
+              borderRadius: "12px",
+              backgroundColor: "var(--md-sys-color-surface-container)",
+              border: "1px solid var(--md-sys-color-outline-variant)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Icon name="bolt" />
+                <strong>Do (Action)</strong>
+              </div>
               <Button
                 size="small"
-                variant="ghost"
+                variant="tonal"
+                icon="add"
                 onClick={() =>
                   update({
                     schedule: {
@@ -254,12 +273,23 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
                   })
                 }
               >
-                + add action
+                Add action
               </Button>
-            </Row>
+            </div>
 
             {draft.schedule.then.map((clause, index) => (
-              <div key={`${clause.target.id}-${clause.attr}-${index}`} {...stylex.props(styles.clause)}>
+              <div
+                key={`${clause.target.id}-${clause.attr}-${index}`}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  backgroundColor: "var(--md-sys-color-surface-container-high)",
+                  border: "1px solid var(--md-sys-color-outline-variant)",
+                }}
+              >
                 <ClauseFields
                   clause={clause}
                   devices={devices}
@@ -268,10 +298,11 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
                   onChange={(patch) => updateClause(index, patch)}
                 />
                 {draft.schedule.then.length > 1 ? (
-                  <Row>
+                  <Row justify="flex-end">
                     <Button
                       size="small"
-                      variant="ghost"
+                      variant="danger"
+                      icon="delete"
                       onClick={() =>
                         update({
                           schedule: {
@@ -281,7 +312,7 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
                         })
                       }
                     >
-                      remove
+                      Remove action
                     </Button>
                   </Row>
                 ) : null}
@@ -296,64 +327,76 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
                 onChange={(terms) => update({ schedule: { ...draft.schedule, onlyIf: { terms } } })}
               />
             ) : (
-              <Row gap={2}>
+              <Row gap={8}>
                 <Button
                   size="small"
-                  variant="ghost"
+                  variant="outlined"
+                  icon="filter_alt"
                   onClick={() =>
                     update({ schedule: { ...draft.schedule, onlyIf: { terms: [defaultTerm(devices)] } } })
                   }
                 >
-                  + only if…
+                  Add condition (Only if…)
                 </Button>
-                <Muted>the action only happens when this is true</Muted>
+                <Muted>Condition must be satisfied for the action to execute</Muted>
               </Row>
             )}
 
-            <Row gap={2} wrap>
+            <Row gap={8} wrap>
               <Select
-                label="stays that way for"
+                label="Condition hold duration"
                 value={draft.schedule.hold ?? ""}
                 onChange={(value) => update({ schedule: { ...draft.schedule, hold: value || null } })}
                 options={[
-                  { value: "", label: "immediately" },
+                  { value: "", label: "Immediately" },
                   ...DURATION_CHOICES.map((value) => ({ value, label: durationWords(value) })),
                 ]}
               />
-              <Muted>wait this long before doing it, cancelling if the condition stops holding</Muted>
+              <Muted>Wait for condition to continuously hold before executing</Muted>
             </Row>
           </div>
-        </>
+        </Stack>
       ) : null}
 
-      <div {...stylex.props(styles.section)}>
-        <strong>Name &amp; save</strong>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+          padding: "16px",
+          borderRadius: "12px",
+          backgroundColor: "var(--md-sys-color-surface-container)",
+          border: "1px solid var(--md-sys-color-outline-variant)",
+          marginTop: "16px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Icon name="tune" />
+          <strong>Configuration & Metadata</strong>
+        </div>
+
         <TextField
-          label="name"
+          label="Schedule Name"
           value={draft.name}
           onChange={(value) => update({ name: value })}
           placeholder={suggestedName}
         />
         <TextField
-          label="notes"
+          label="Notes & Description"
           value={draft.description}
           onChange={(value) => update({ description: value })}
         />
-        <Row gap={3} wrap>
-          <Row gap={2}>
-            <Switch checked={draft.enabled} onChange={(next) => update({ enabled: next })} label="enabled" />
-            <span>enabled</span>
-          </Row>
-          <Muted>id: {draft.id || slugify(draft.name || suggestedName)}</Muted>
+
+        <Row gap={12} wrap>
+          <Switch checked={draft.enabled} onChange={(next) => update({ enabled: next })} label="Enabled" />
+          <span>Enable schedule</span>
+          <Muted>ID: {draft.id || slugify(draft.name || suggestedName)}</Muted>
         </Row>
 
-        <Row gap={2}>
-          <Button size="small" variant="ghost" onClick={() => setRawMode(!rawMode)}>
-            {rawMode ? "back to the builder" : "advanced: raw JSON"}
+        <Row gap={8}>
+          <Button size="small" variant="text" onClick={() => setRawMode(!rawMode)}>
+            {rawMode ? "Return to visual builder" : "Switch to raw JSON editor"}
           </Button>
-          {rule ? (
-            <Muted>the builder never drops fields it does not show; the raw document is kept as-is</Muted>
-          ) : null}
         </Row>
 
         {rawMode ? (
@@ -361,19 +404,26 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
             value={raw}
             onChange={(event) => setRaw(event.target.value)}
             rows={18}
-            {...stylex.props(styles.section)}
-            style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12 }}
+            style={{
+              fontFamily: "Roboto Mono, monospace",
+              fontSize: "13px",
+              padding: "12px",
+              borderRadius: "8px",
+              backgroundColor: "var(--md-sys-color-surface-container-lowest)",
+              color: "var(--md-sys-color-on-surface)",
+              border: "1px solid var(--md-sys-color-outline-variant)",
+            }}
           />
         ) : (
-          <Row gap={3} wrap>
+          <Row gap={12} wrap>
             <TextField
-              label="priority"
+              label="Priority"
               type="number"
               value={String(draft.priority)}
               onChange={(value) => update({ priority: Number(value) || 0 })}
             />
             <TextField
-              label="rate limit (s)"
+              label="Rate Limit (seconds)"
               type="number"
               value={String(draft.rateLimit)}
               onChange={(value) => update({ rateLimit: Number(value) || 0 })}
@@ -420,18 +470,18 @@ function TriggerFields({
 }) {
   if (trigger.kind === "at") {
     return (
-      <Stack gap={3}>
-        <Row gap={2} wrap>
+      <Stack gap={12}>
+        <Row gap={8} wrap>
           {trigger.solar ? (
             <Select
-              label="at"
+              label="Solar event"
               value={trigger.at}
               onChange={(value) => onChange({ ...trigger, at: value })}
               options={SOLAR_EVENTS.map((event) => ({ value: event, label: event }))}
             />
           ) : (
             <TextField
-              label="at"
+              label="At time"
               type="time"
               value={trigger.at}
               onChange={(value) => onChange({ ...trigger, at: value })}
@@ -439,7 +489,7 @@ function TriggerFields({
           )}
           {trigger.solar ? (
             <TextField
-              label="offset (± 30m)"
+              label="Offset (± 30m)"
               value={trigger.offset ?? ""}
               onChange={(value) => onChange({ ...trigger, offset: value || null })}
               placeholder="-30m"
@@ -447,8 +497,8 @@ function TriggerFields({
           ) : null}
         </Row>
         {!trigger.solar ? (
-          <Row gap={1} wrap>
-            <Label>days</Label>
+          <Row gap={4} wrap>
+            <Label>Days of week</Label>
             {DAYS.map((day) => (
               <Chip
                 key={day}
@@ -465,13 +515,13 @@ function TriggerFields({
                 {day}
               </Chip>
             ))}
-            <Button size="small" variant="ghost" onClick={() => onChange({ ...trigger, days: [] })}>
-              every day
+            <Button size="small" variant="text" onClick={() => onChange({ ...trigger, days: [] })}>
+              Every day
             </Button>
           </Row>
         ) : null}
         {trigger.solar ? (
-          <Muted>The exact time comes from the backend after saving (sun position, not the browser).</Muted>
+          <Muted>Calculated dynamically by the server based on solar ephemeris.</Muted>
         ) : null}
       </Stack>
     );
@@ -480,26 +530,26 @@ function TriggerFields({
   if (trigger.kind === "state") {
     const device = devices.find((item) => item.id === trigger.device);
     return (
-      <Stack gap={3}>
-        <Row gap={2} wrap>
+      <Stack gap={12}>
+        <Row gap={8} wrap>
           <Select
-            label="thing"
+            label="Device"
             value={trigger.device}
             onChange={(value) => {
               const next = devices.find((item) => item.id === value);
               onChange({ ...trigger, device: value, attr: next ? Object.keys(next.attributes)[0] : "" });
             }}
             options={[
-              { value: "", label: "choose…" },
+              { value: "", label: "Choose device…" },
               ...devices.map((item) => ({ value: item.id, label: names.device(item.id) })),
             ]}
           />
           <Select
-            label="reading"
+            label="Attribute"
             value={trigger.attr}
             onChange={(value) => onChange({ ...trigger, attr: value })}
             options={[
-              { value: "", label: "choose…" },
+              { value: "", label: "Choose attribute…" },
               ...Object.keys(device?.attributes ?? {}).map((attr) => ({
                 value: attr,
                 label: attrLabel(attr),
@@ -507,12 +557,12 @@ function TriggerFields({
             ]}
           />
         </Row>
-        <Row gap={2} wrap>
+        <Row gap={8} wrap>
           <Chip active={trigger.changed} onClick={() => onChange({ ...trigger, changed: true })}>
-            only when it changes
+            Only on value change
           </Chip>
           <Chip active={!trigger.changed} onClick={() => onChange({ ...trigger, changed: false })}>
-            every report
+            Every telemetry report
           </Chip>
         </Row>
       </Stack>
@@ -520,13 +570,13 @@ function TriggerFields({
   }
 
   return (
-    <Row gap={2} wrap>
+    <Row gap={8} wrap>
       <TextField
-        label="every"
+        label="Interval"
         value={trigger.every}
         onChange={(value) => onChange({ ...trigger, every: value })}
       />
-      <Row gap={1}>
+      <Row gap={4}>
         {DURATION_CHOICES.slice(0, 5).map((choice) => (
           <Chip
             key={choice}
@@ -564,43 +614,43 @@ function ClauseFields({
         .map(([name]) => name);
 
   return (
-    <Stack gap={2}>
-      <Row gap={2} wrap>
+    <Stack gap={8}>
+      <Row gap={8} wrap>
         <Select
-          label="target"
+          label="Target"
           value={`${clause.target.kind}:${clause.target.id}`}
           onChange={(value) => {
             const [kind, id] = value.split(":");
             onChange({ target: { kind: kind as "device" | "group", id }, attr: "" });
           }}
           options={[
-            { value: ":", label: "choose…" },
+            { value: ":", label: "Choose target…" },
             ...devices
               .filter((item) => Object.values(item.attributes).some((spec) => spec.write))
               .map((item) => ({ value: `device:${item.id}`, label: names.device(item.id) })),
-            ...groups.map((item) => ({ value: `group:${item.id}`, label: `all of ${item.name ?? item.id}` })),
+            ...groups.map((item) => ({ value: `group:${item.id}`, label: `All of ${item.name ?? item.id}` })),
           ]}
         />
         <Select
-          label="reading"
+          label="Attribute"
           value={clause.attr}
           onChange={(value) => {
             const spec = device?.attributes[value];
             onChange({ attr: value, value: defaultValue(spec) });
           }}
           options={[
-            { value: "", label: "choose…" },
+            { value: "", label: "Choose attribute…" },
             ...attributes.map((attr) => ({ value: attr, label: attrLabel(attr) })),
           ]}
         />
         <ValueWidget spec={attribute} value={clause.value} onChange={(value) => onChange({ value })} />
         <Select
-          label="then restore"
+          label="Revert after duration"
           value={clause.revertAfter ?? ""}
           onChange={(value) => onChange({ revertAfter: value || null })}
           options={[
-            { value: "", label: "never" },
-            ...HOLD_CHOICES.map((value) => ({ value, label: `after ${durationWords(value)}` })),
+            { value: "", label: "Permanent" },
+            ...HOLD_CHOICES.map((value) => ({ value, label: `Revert in ${durationWords(value)}` })),
           ]}
         />
       </Row>
@@ -617,24 +667,24 @@ function ValueWidget({
   value: Scalar;
   onChange: (next: Scalar) => void;
 }) {
-  if (!spec) return <Muted>choose a reading</Muted>;
+  if (!spec) return <Muted>Choose an attribute first</Muted>;
   if (spec.type === "boolean") {
     return (
-      <Row gap={2}>
-        <Label>value</Label>
-        <Switch checked={value === true} onChange={(next) => onChange(next)} label="value" />
+      <Row gap={8}>
+        <Label>Value</Label>
+        <Switch checked={value === true} onChange={(next) => onChange(next)} label="Value" />
       </Row>
     );
   }
   if (spec.enum?.length === 2 && spec.enum.includes("ON") && spec.enum.includes("OFF")) {
     return (
-      <Row gap={2}>
-        <Label>value</Label>
+      <Row gap={4}>
+        <Label>Value</Label>
         <Chip active={value === "ON"} onClick={() => onChange("ON")}>
-          on
+          ON
         </Chip>
         <Chip active={value === "OFF"} onClick={() => onChange("OFF")}>
-          off
+          OFF
         </Chip>
       </Row>
     );
@@ -642,7 +692,7 @@ function ValueWidget({
   if (spec.enum?.length) {
     return (
       <Select
-        label="value"
+        label="Value"
         value={String(value)}
         onChange={(next) =>
           onChange((spec.enum?.find((option) => String(option) === next) ?? next) as Scalar)
@@ -654,7 +704,7 @@ function ValueWidget({
   if (spec.type === "number") {
     return (
       <TextField
-        label={`value${spec.unit ? ` (${spec.unit})` : ""}`}
+        label={`Target value${spec.unit ? ` (${spec.unit})` : ""}`}
         type="number"
         value={String(value)}
         min={spec.limits?.[0]}
@@ -664,7 +714,7 @@ function ValueWidget({
       />
     );
   }
-  return <TextField label="value" value={String(value)} onChange={(next) => onChange(next)} />;
+  return <TextField label="Value" value={String(value)} onChange={(next) => onChange(next)} />;
 }
 
 function ConditionFields({
@@ -679,17 +729,17 @@ function ConditionFields({
   onChange: (terms: Term[]) => void;
 }) {
   return (
-    <Stack gap={2}>
+    <Stack gap={8}>
       <Row justify="space-between">
-        <Label>Only if</Label>
-        <Button size="small" variant="ghost" onClick={() => onChange([...terms, defaultTerm(devices)])}>
-          + add condition
+        <Label>Conditions (Only if)</Label>
+        <Button size="small" variant="text" icon="add" onClick={() => onChange([...terms, defaultTerm(devices)])}>
+          Add condition
         </Button>
       </Row>
       {terms.map((term, index) => {
         const [device, attr] = term.attr;
         return (
-          <Row key={`${index}-${device}-${attr}`} gap={2} wrap>
+          <Row key={`${index}-${device}-${attr}`} gap={8} wrap>
             <Select
               value={device}
               onChange={(value) => {
@@ -706,7 +756,7 @@ function ConditionFields({
                 );
               }}
               options={[
-                { value: "", label: "choose…" },
+                { value: "", label: "Choose device…" },
                 ...devices.map((item) => ({ value: item.id, label: names.device(item.id) })),
               ]}
             />
@@ -733,11 +783,11 @@ function ConditionFields({
                 )
               }
               options={[
-                { value: "eq", label: "is" },
-                { value: "ne", label: "is not" },
-                { value: "gt", label: "is above" },
+                { value: "eq", label: "is equal to" },
+                { value: "ne", label: "is not equal to" },
+                { value: "gt", label: "is greater than" },
                 { value: "ge", label: "is at least" },
-                { value: "lt", label: "is below" },
+                { value: "lt", label: "is less than" },
                 { value: "le", label: "is at most" },
               ]}
             />
@@ -752,10 +802,11 @@ function ConditionFields({
             />
             <Button
               size="small"
-              variant="ghost"
+              variant="danger"
+              icon="delete"
               onClick={() => onChange(terms.filter((_item, position) => position !== index))}
             >
-              remove
+              Remove
             </Button>
           </Row>
         );
@@ -796,40 +847,12 @@ function commonAttributes(devices: Device[], members: string[]): string[] {
   return lists.reduce((common, list) => common.filter((attr) => list.includes(attr)));
 }
 
-/** Builder-side hints mirroring the backend validation (§7.1). */
-function validate(draft: Draft, devices: Device[]): string[] {
+function validate(draft: Draft): string[] {
   const problems: string[] = [];
-  const { schedule } = draft;
-  if (!schedule.then.length) problems.push("add at least one action");
-  for (const clause of schedule.then) {
-    if (!clause.target.id) problems.push("choose a target for every action");
-    if (!clause.attr) problems.push("choose a reading for every action");
+  if (!draft.name && !draft.schedule.when) problems.push("Please provide a name or trigger.");
+  if (draft.schedule.then.length === 0) problems.push("Please add at least one action.");
+  for (const clause of draft.schedule.then) {
+    if (!clause.target.id || !clause.attr) problems.push("Every action must specify a target device and attribute.");
   }
-  if (schedule.when.kind === "state" && (!schedule.when.device || !schedule.when.attr))
-    problems.push("choose the reading that triggers this schedule");
-  if (schedule.when.kind === "every" && !/^\d+(\.\d+)?[smhdw]$/.test(schedule.when.every))
-    problems.push('write the interval like "15m" or "2h"');
-  if (
-    schedule.when.kind === "at" &&
-    !schedule.when.solar &&
-    !/^([01]?\d|2[0-3]):[0-5]\d$/.test(schedule.when.at)
-  )
-    problems.push("write the time as HH:MM");
-  if (schedule.hold && !/^\d+(\.\d+)?[smhdw]$/.test(schedule.hold))
-    problems.push('write the hold as "3h" or "30m"');
-  for (const clause of schedule.then) {
-    if (clause.revertAfter && !/^\d+(\.\d+)?[smhdw]$/.test(clause.revertAfter))
-      problems.push('write the restore delay as "4h" or "30m"');
-    const device = devices.find((item) => item.id === clause.target.id);
-    const spec = device?.attributes[clause.attr];
-    if (
-      spec?.limits &&
-      typeof clause.value === "number" &&
-      (clause.value < spec.limits[0] || clause.value > spec.limits[1])
-    ) {
-      problems.push(`${attrLabel(clause.attr)} must be between ${spec.limits[0]} and ${spec.limits[1]}`);
-    }
-  }
-  if (draft.rateLimit < 0) problems.push("the rate limit cannot be negative");
   return problems;
 }

@@ -98,12 +98,23 @@ export const api = {
   rule: (id: string) => request(`/api/v1/rules/${encodeURIComponent(id)}`, ruleSchema),
   timers: () => request("/api/v1/timers", timersSchema),
 
-  events: (params: { since?: string; limit?: number; rule?: string; kind?: string } = {}) => {
+  events: (
+    params: {
+      since?: string;
+      limit?: number;
+      rule?: string;
+      kind?: string;
+      category?: string;
+      exclude_kinds?: string;
+    } = {}
+  ) => {
     const query = new URLSearchParams();
     if (params.since) query.set("since", params.since);
     if (params.limit) query.set("limit", String(params.limit));
     if (params.rule) query.set("rule", params.rule);
     if (params.kind) query.set("kind", params.kind);
+    if (params.category) query.set("category", params.category);
+    if (params.exclude_kinds) query.set("exclude_kinds", params.exclude_kinds);
     const suffix = query.toString();
     return request(`/api/v1/events${suffix ? `?${suffix}` : ""}`, z.array(eventSchema)) as Promise<Event[]>;
   },

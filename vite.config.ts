@@ -1,5 +1,4 @@
 import { fileURLToPath } from "node:url";
-import stylex from "@stylexjs/unplugin";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
@@ -8,16 +7,7 @@ const apiTarget = process.env.VITE_API_TARGET ?? "http://localhost:8099";
 export const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
-  plugins: [
-    stylex.vite({
-      devMode: "full",
-      useCSSLayers: true,
-      // StyleX resolves `defineVars` imports itself, so it needs the same path alias Vite has.
-      aliases: { "@/*": ["/ROOT/src/*"] },
-      unstable_moduleResolution: { type: "commonJS", rootDir: projectRoot },
-    }),
-    react(),
-  ],
+  plugins: [react()],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },

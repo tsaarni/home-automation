@@ -1,37 +1,16 @@
-import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useEvents, useHome, useNames, useRules, useTime, useTimers, useToggleRule } from "@/api/queries";
 import type { Rule } from "@/api/types";
-import { Badge, Button, Card, Chip, Empty, Muted, Row, Stack, Switch } from "@/components/primitives";
+import { Badge, Button, Card, Chip, Empty, Icon, Muted, Row, Stack, Switch } from "@/components/primitives";
 import { StatusHeader } from "@/components/StatusHeader";
 import { outcomeLabel } from "@/lib/reasons";
 import { buildRuns, lastRunPerRule } from "@/lib/runs";
 import { dayMarks, describeSchedule, parseRule } from "@/lib/schedule";
 import { matches, useSearchQuery } from "@/lib/search";
-import { tokens } from "@/theme/tokens.stylex";
 import { DayStrip } from "./DayStrip";
 import { ScheduleBuilder } from "./ScheduleBuilder";
 
-const styles = stylex.create({
-  block: { display: "flex", flexDirection: "column", gap: tokens.space2 },
-  thingName: { fontSize: tokens.fontLg, fontWeight: 700 },
-  ruleRow: {
-    display: "flex",
-    gap: tokens.space2,
-    alignItems: "center",
-    flexWrap: "wrap",
-    paddingTop: tokens.space2,
-    borderTopColor: tokens.border,
-    borderTopStyle: "solid",
-    borderTopWidth: 1,
-  },
-  sentence: { textDecoration: "none", color: tokens.text, fontWeight: 500 },
-  ruleText: { flexGrow: 1, minWidth: "min(100%, 320px)" },
-  dim: { opacity: 0.55 },
-});
-
-/** Schedules, grouped by what they affect, with a day strip per thing (§5.2). */
 export function ScheduleListScreen() {
   const rules = useRules().data ?? [];
   const timers = useTimers().data;
@@ -65,104 +44,134 @@ export function ScheduleListScreen() {
   return (
     <div>
       <StatusHeader />
-      <Stack gap={4}>
-        <Row gap={2} wrap justify="space-between">
-          <Row gap={2} wrap>
-            <Chip active={showDisabled} onClick={() => setShowDisabled(true)}>
-              all
+      <Stack gap={20}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+          <Row gap={8} wrap>
+            <Chip active={showDisabled} onClick={() => setShowDisabled(true)} icon="tune">
+              All schedules
             </Chip>
-            <Chip active={!showDisabled} onClick={() => setShowDisabled(false)}>
-              enabled only
+            <Chip active={!showDisabled} onClick={() => setShowDisabled(false)} icon="check">
+              Enabled only
             </Chip>
             <Muted>{visible.length} schedules</Muted>
           </Row>
-          <Button variant="primary" onClick={() => setBuilding(null)}>
-            + New schedule
+          <Button variant="filled" icon="add" onClick={() => setBuilding(null)}>
+            New schedule
           </Button>
-        </Row>
+        </div>
 
-        {visible.length === 0 ? <Empty>no schedules match</Empty> : null}
+        {visible.length === 0 ? <Empty>No schedules match your filters.</Empty> : null}
 
         {blocks.map((block) => {
           const blockRules = block.rules;
           const marks = dayMarks(blockRules, timers?.next_due ?? {}, time.zone);
           return (
-            <Card key={block.id}>
-              <div {...stylex.props(styles.block)}>
-                <Row justify="space-between" wrap>
-                  <span {...stylex.props(styles.thingName)}>{block.label}</span>
-                  <Muted>
+            <Card key={block.id} variant="elevated">
+              <Stack gap={14}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Icon name="device_hub" />
+                    <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "var(--md-sys-color-on-surface)" }}>
+                      {block.label}
+                    </h3>
+                  </div>
+                  <Badge tone="muted">
                     {blockRules.length} schedule{blockRules.length === 1 ? "" : "s"}
-                  </Muted>
-                </Row>
-                {marks.length > 1 ? <DayStrip marks={marks} label={time.clock(new Date())} /> : null}
-                {blockRules.map((rule) => {
-                  const parsed = parseRule(rule);
-                  const description = parsed.ok ? describeSchedule(parsed.schedule, names) : null;
-                  const nextDue = timers?.next_due?.[rule.id];
-                  const last = lastRuns.get(rule.id);
-                  return (
-                    <div key={rule.id} {...stylex.props(styles.ruleRow, !rule.enabled && styles.dim)}>
-                      <Switch
-                        checked={rule.enabled}
-                        label={`${rule.enabled ? "disable" : "enable"} ${rule.name ?? rule.id}`}
-                        onChange={(next) => toggle.mutate({ id: rule.id, enabled: next })}
-                      />
-                      <div {...stylex.props(styles.ruleText)}>
-                        <Link
-                          to={`/schedules/${encodeURIComponent(rule.id)}`}
-                          {...stylex.props(styles.sentence)}
-                        >
-                          {description
-                            ? description.sentence
-                            : `${rule.name ?? rule.id} (uses features the builder does not show)`}
-                        </Link>
-                      </div>
-                      {rule.once ? <Badge tone="accent">one-shot</Badge> : null}
-                      {!parsed.ok ? <Badge tone="warn">raw</Badge> : null}
-                      {last ? (
-                        <Badge
-                          tone={
-                            last.outcome === "ran"
-                              ? "ok"
-                              : last.outcome === "nothing"
-                                ? "muted"
-                                : last.outcome === "failed"
-                                  ? "bad"
-                                  : "warn"
-                          }
-                        >
-                          last: {outcomeLabel(last.outcome)} {time.stamp(last.ts)}
-                        </Badge>
-                      ) : (
-                        <Badge tone="muted" title="the event log only holds the newest events">
-                          no recent run
-                        </Badge>
-                      )}
-                      {nextDue ? (
-                        <Badge tone="muted">
-                          next {time.stamp(nextDue)} ({time.rel(nextDue)})
-                        </Badge>
-                      ) : null}
-                      <Row gap={1}>
-                        <Button size="small" variant="ghost" onClick={() => setBuilding(rule)}>
-                          edit
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="ghost"
-                          onClick={() => navigate(`/schedules/${encodeURIComponent(rule.id)}`)}
-                        >
-                          runs
-                        </Button>
-                      </Row>
-                    </div>
-                  );
-                })}
-                {block.id === "__unassigned__" && home.things.length ? (
-                  <Muted>these schedules do not set a thing the UI knows</Muted>
+                  </Badge>
+                </div>
+
+                {marks.length > 1 ? (
+                  <div style={{ padding: "4px 0", borderBottom: "1px solid var(--md-sys-color-outline-variant)" }}>
+                    <DayStrip marks={marks} label={time.clock(new Date())} />
+                  </div>
                 ) : null}
-              </div>
+
+                <Stack gap={10}>
+                  {blockRules.map((rule) => {
+                    const parsed = parseRule(rule);
+                    const description = parsed.ok ? describeSchedule(parsed.schedule, names) : null;
+                    const nextDue = timers?.next_due?.[rule.id];
+                    const last = lastRuns.get(rule.id);
+                    return (
+                      <div
+                        key={rule.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "14px",
+                          padding: "10px 14px",
+                          backgroundColor: "var(--md-sys-color-surface-container)",
+                          borderRadius: "12px",
+                          border: "1px solid var(--md-sys-color-outline-variant)",
+                          flexWrap: "wrap",
+                          opacity: !rule.enabled ? 0.6 : 1,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: "280px" }}>
+                          <Switch
+                            checked={rule.enabled}
+                            label={`${rule.enabled ? "Disable" : "Enable"} ${rule.name ?? rule.id}`}
+                            onChange={(next) => toggle.mutate({ id: rule.id, enabled: next })}
+                          />
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <Link
+                              to={`/schedules/${encodeURIComponent(rule.id)}`}
+                              style={{ fontWeight: 600, fontSize: "14px", color: "var(--md-sys-color-on-surface)" }}
+                            >
+                              {description ? description.sentence : `${rule.name ?? rule.id} (custom rule)`}
+                            </Link>
+                            <Row gap={6} wrap>
+                              {rule.once ? <Badge tone="accent">one-shot</Badge> : null}
+                              {!parsed.ok ? <Badge tone="warn">raw JSON</Badge> : null}
+                              {last ? (
+                                <Badge
+                                  tone={
+                                    last.outcome === "ran"
+                                      ? "ok"
+                                      : last.outcome === "nothing"
+                                        ? "muted"
+                                        : last.outcome === "failed"
+                                          ? "bad"
+                                          : "warn"
+                                  }
+                                >
+                                  Last: {outcomeLabel(last.outcome)} {time.stamp(last.ts)}
+                                </Badge>
+                              ) : (
+                                <Badge tone="muted">No recent run</Badge>
+                              )}
+                              {nextDue ? (
+                                <Badge tone="muted">
+                                  Next {time.stamp(nextDue)} ({time.rel(nextDue)})
+                                </Badge>
+                              ) : null}
+                            </Row>
+                          </div>
+                        </div>
+
+                        <Row gap={6}>
+                          <Button size="small" variant="tonal" icon="edit" onClick={() => setBuilding(rule)}>
+                            Edit
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="text"
+                            icon="history"
+                            onClick={() => navigate(`/schedules/${encodeURIComponent(rule.id)}`)}
+                          >
+                            Runs
+                          </Button>
+                        </Row>
+                      </div>
+                    );
+                  })}
+                </Stack>
+
+                {block.id === "__unassigned__" && home.things.length ? (
+                  <Muted>These schedules do not target an active recognized device.</Muted>
+                ) : null}
+              </Stack>
             </Card>
           );
         })}
@@ -186,7 +195,6 @@ interface Block {
   rules: Rule[];
 }
 
-/** Group by the thing (or group) the schedule writes — the question is "what does X do?". */
 function groupByTarget(rules: Rule[], names: ReturnType<typeof useNames>): Block[] {
   const blocks = new Map<string, Block>();
   for (const rule of rules) {

@@ -1,17 +1,8 @@
-import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { useRestoreOverride, useSetValue, useTime, useTimers } from "@/api/queries";
 import type { Reading } from "@/home/derive";
 import { HOLD_CHOICES } from "@/lib/schedule";
-import { tokens } from "@/theme/tokens.stylex";
-import { Badge, Button, Muted, Row, Select, Switch, Tabular, TextField } from "./primitives";
-
-const styles = stylex.create({
-  wrap: { display: "flex", flexDirection: "column", gap: tokens.space2 },
-  unit: { fontSize: tokens.fontSm, color: tokens.textMuted, marginLeft: "2px" },
-  note: { fontSize: tokens.fontSm, color: tokens.textMuted },
-  dim: { opacity: 0.6 },
-});
+import { Badge, Button, Icon, Row, Select, Switch, Tabular, TextField } from "./primitives";
 
 type Kind = "switch" | "boolean" | "select" | "number" | "text";
 
@@ -38,10 +29,6 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/**
- * One controllable reading. Optimistic (§6.4): the value flips immediately, then the poll or
- * the response reconciles it, and a refusal snaps it back with a toast.
- */
 export function Control({ reading, heading }: { reading: Reading; heading?: string }) {
   const setValue = useSetValue();
   const restore = useRestoreOverride();
@@ -68,49 +55,85 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
   };
 
   return (
-    <div {...stylex.props(styles.wrap, !reading.known && styles.dim)}>
-      <Row gap={2} wrap justify="space-between">
-        <Row gap={2}>
-          <Muted>{reading.label}</Muted>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        backgroundColor: "var(--md-sys-color-surface-container-high)",
+        padding: "10px 14px",
+        borderRadius: "8px",
+        opacity: !reading.known ? 0.6 : 1,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "10px",
+        }}
+      >
+        <Row gap={8}>
+          <span
+            style={{ fontSize: "13px", fontWeight: 500, color: "var(--md-sys-color-on-surface-variant)" }}
+          >
+            {reading.label}
+          </span>
           {!reading.known ? (
-            <Badge tone="muted" title="no value has been reported since the last restart">
-              waiting for reading
+            <Badge tone="muted" title="No telemetry received">
+              waiting
             </Badge>
           ) : kind === "switch" || kind === "boolean" ? (
-            <Badge tone={isOn(reading) ? "ok" : "muted"}>{isOn(reading) ? "on" : "off"}</Badge>
+            <Badge tone={isOn(reading) ? "ok" : "muted"}>{isOn(reading) ? "ON" : "OFF"}</Badge>
           ) : kind === "select" ? (
-            <Badge tone="muted">{optionLabel(reading, current)}</Badge>
+            <Badge tone="accent">{optionLabel(reading, current)}</Badge>
           ) : (
-            <Tabular style={{ fontSize: "18px", fontWeight: 600 }}>
+            <Tabular style={{ fontSize: "18px", fontWeight: 700, color: "var(--md-sys-color-on-surface)" }}>
               {current === undefined ? "—" : String(round(Number(current)))}
-              {reading.unit ? <span {...stylex.props(styles.unit)}>{reading.unit}</span> : null}
+              {reading.unit ? (
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--md-sys-color-on-surface-variant)",
+                    marginLeft: "2px",
+                  }}
+                >
+                  {reading.unit}
+                </span>
+              ) : null}
             </Tabular>
           )}
         </Row>
 
         {kind === "switch" || kind === "boolean" ? (
-          <Row gap={1}>
-            {HOLD_CHOICES.slice(0, 3).map((hold) => (
-              <Button
-                key={hold}
-                size="small"
-                variant="ghost"
-                disabled={busy}
-                title={`turn on for ${hold}`}
-                onClick={() => write(reading.on, hold)}
-              >
-                {hold}
-              </Button>
-            ))}
-            <Button
-              size="small"
-              variant="ghost"
-              disabled={busy}
-              title="turn off"
-              onClick={() => write(reading.off)}
-            >
-              off
-            </Button>
+          <Row gap={4}>
+            {reading.hold ? (
+              <>
+                {HOLD_CHOICES.slice(0, 3).map((hold) => (
+                  <Button
+                    key={hold}
+                    size="small"
+                    variant="tonal"
+                    disabled={busy}
+                    title={`Turn on for ${hold}`}
+                    onClick={() => write(reading.on, hold)}
+                  >
+                    {hold}
+                  </Button>
+                ))}
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={busy}
+                  title="Turn off"
+                  onClick={() => write(reading.off)}
+                >
+                  Off
+                </Button>
+              </>
+            ) : null}
             <Switch
               checked={isOn(reading)}
               disabled={busy}
@@ -119,61 +142,113 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
             />
           </Row>
         ) : null}
-      </Row>
+      </div>
 
       {kind === "number" ? (
-        <Row gap={2} wrap>
-          <Button
-            size="small"
-            disabled={busy || typeof current !== "number"}
-            title="lower"
-            onClick={() => write(round(Number(current) - (reading.step ?? 0.5)))}
+        <Row gap={12} wrap>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              borderRadius: "9999px",
+              backgroundColor: "var(--md-sys-color-surface-container-highest)",
+              border: "1px solid var(--md-sys-color-outline-variant)",
+              overflow: "hidden",
+            }}
           >
-            −
-          </Button>
-          <Tabular style={{ fontSize: "22px", fontWeight: 600, minWidth: "76px", textAlign: "center" }}>
-            {typeof current === "number" ? round(current) : "—"}
-          </Tabular>
-          <Button
-            size="small"
-            disabled={busy || typeof current !== "number"}
-            title="raise"
-            onClick={() => write(round(Number(current) + (reading.step ?? 0.5)))}
-          >
-            +
-          </Button>
+            <button
+              type="button"
+              disabled={busy || typeof current !== "number"}
+              title="Decrease setpoint"
+              onClick={() => write(round(Number(current) - (reading.step ?? 0.5)))}
+              style={{
+                width: "36px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--md-sys-color-on-surface)",
+              }}
+            >
+              <Icon name="remove" />
+            </button>
+            <Tabular
+              style={{
+                minWidth: "60px",
+                textAlign: "center",
+                fontSize: "16px",
+                fontWeight: 700,
+                padding: "0 6px",
+              }}
+            >
+              {typeof current === "number" ? round(current) : "—"}
+              {reading.unit ? (
+                <span style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)" }}>
+                  {" "}
+                  {reading.unit}
+                </span>
+              ) : null}
+            </Tabular>
+            <button
+              type="button"
+              disabled={busy || typeof current !== "number"}
+              title="Increase setpoint"
+              onClick={() => write(round(Number(current) + (reading.step ?? 0.5)))}
+              style={{
+                width: "36px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--md-sys-color-on-surface)",
+              }}
+            >
+              <Icon name="add" />
+            </button>
+          </div>
+
           {reading.unit === "C" &&
           reading.min !== null &&
           reading.min !== undefined &&
           reading.max !== null &&
           reading.max !== undefined ? (
-            <Select
-              value=""
-              onChange={(value) => {
-                if (value) write(Number(value));
-              }}
-              options={[
-                { value: "", label: "set…" },
-                ...temperatureChoices(reading.min, reading.max, reading.step ?? 0.5).map((value) => ({
-                  value: String(value),
-                  label: `${value} °C`,
-                })),
-              ]}
-            />
+            <div style={{ minWidth: "160px" }}>
+              <Select
+                value=""
+                onChange={(value) => {
+                  if (value) write(Number(value));
+                }}
+                options={[
+                  { value: "", label: "Preset temperature…" },
+                  ...temperatureChoices(reading.min, reading.max, reading.step ?? 0.5).map((value) => ({
+                    value: String(value),
+                    label: `${value} °C`,
+                  })),
+                ]}
+              />
+            </div>
           ) : null}
         </Row>
       ) : null}
 
       {kind === "select" ? (
-        <Select
-          value={String(current ?? "")}
-          disabled={busy}
-          onChange={(value) => write(reading.options?.find((option) => String(option) === value) ?? value)}
-          options={(reading.options ?? []).map((option) => ({
-            value: String(option),
-            label: optionLabel(reading, option),
-          }))}
-        />
+        <div style={{ maxWidth: "280px" }}>
+          <Select
+            value={String(current ?? "")}
+            disabled={busy}
+            onChange={(value) => write(reading.options?.find((option) => String(option) === value) ?? value)}
+            options={(reading.options ?? []).map((option) => ({
+              value: String(option),
+              label: optionLabel(reading, option),
+            }))}
+          />
+        </div>
       ) : null}
 
       {kind === "text" ? (
@@ -181,34 +256,42 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
       ) : null}
 
       {override?.due_at ? (
-        <Row gap={2} wrap>
+        <Row gap={8} wrap>
           <Badge tone="warn">
-            back to{" "}
-            {override.value === undefined
-              ? "its old value"
-              : `${override.value}${reading.unit ? ` ${reading.unit}` : ""}`}{" "}
-            {time.rel(override.due_at)}
+            <Icon name="timer" />
+            <span>
+              Restores to{" "}
+              {override.value === undefined
+                ? "previous setting"
+                : `${override.value}${reading.unit ? ` ${reading.unit}` : ""}`}{" "}
+              in {time.rel(override.due_at)}
+            </span>
           </Badge>
-          <Button size="small" variant="ghost" onClick={() => restore(override)}>
-            restore now
+          <Button size="small" variant="text" onClick={() => restore(override)}>
+            Restore now
           </Button>
         </Row>
       ) : null}
 
       {pendingHold?.due_at ? (
-        <div {...stylex.props(styles.note)}>
-          {reading.schedules.length ? "a schedule is" : "a schedule will act"} waiting for this value to hold
-          until {time.stamp(pendingHold.due_at)}
-        </div>
+        <Row gap={4} style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)" }}>
+          <Icon name="hourglass_top" />
+          <span>
+            {reading.schedules.length ? "A schedule is" : "A schedule will act"} waiting for this value to
+            hold until {time.stamp(pendingHold.due_at)}
+          </span>
+        </Row>
       ) : null}
 
-      {reading.schedules.length && !override ? (
-        <div {...stylex.props(styles.note)}>
-          {reading.schedules.length === 1
-            ? "a schedule sets this too"
-            : `${reading.schedules.length} schedules set this too`}{" "}
-          — a manual change may be overwritten
-        </div>
+      {reading.schedules.length > 0 && !override ? (
+        <Row gap={4} style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)" }}>
+          <Icon name="event_repeat" />
+          <span>
+            {reading.schedules.length === 1
+              ? "1 schedule controls this"
+              : `${reading.schedules.length} schedules control this`}
+          </span>
+        </Row>
       ) : null}
     </div>
   );

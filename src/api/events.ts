@@ -48,6 +48,12 @@ function mergeEvents(existing: Event[], incoming: Event[]): Event[] {
   return merged.slice(-MAX_EVENTS);
 }
 
+export function ingestEvent(event: Event): void {
+  buffer = mergeEvents(buffer, [event]);
+  const newest = buffer.length ? buffer[buffer.length - 1] : undefined;
+  if (newest && (!lastTs || newest.ts > lastTs)) lastTs = newest.ts;
+}
+
 /** Fetch new events and return the whole window, newest first. */
 export async function pollEvents(): Promise<Event[]> {
   if (!primed) {
@@ -61,4 +67,31 @@ export async function pollEvents(): Promise<Event[]> {
   const newest = buffer.length ? buffer[buffer.length - 1] : undefined;
   if (newest) lastTs = newest.ts;
   return [...buffer].reverse();
+}
+
+/** Subscribe to live events via Server-Sent Events (SSE). */
+export function subscribeEventStream(onEvent: (event: Event) => void): () => void {
+  const url = `${api.base}/api/v1/events/stream`;
+  let es: EventSource | null = null;
+  try {
+    es = new EventSource(url);
+    es.onmessage = (msg) => {
+      try {
+        const parsed = JSON.parse(msg.data) as Event;
+        ingestEvent(parsed);
+        onEvent(parsed);
+      } catch {
+        // ignore parse error or non-json message
+      }
+    };
+  } catch {
+    // EventSource fallback
+  }
+
+  return () => {
+    if (es) {
+      es.close();
+      es = null;
+    }
+  };
 }

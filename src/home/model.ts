@@ -68,6 +68,8 @@ export interface ThingMeta {
   /** ordered preference of the readings worth showing first */
   primary: string[];
   controls: ControlSpec[];
+  /** custom attribute display labels for this specific device */
+  labels?: Record<string, string>;
   /** attributes that are never shown for this thing, even under "all readings" */
   hide?: string[];
 }
@@ -209,12 +211,17 @@ export const things: Record<string, ThingMeta> = {
   "motion-philips-car": { room: "carport", name: "Carport motion", primary: ["occupancy"], controls: [] },
   "motion-sonoff": { room: "other", name: "Motion sensor", primary: ["occupancy"], controls: [] },
 
-  "door-front": { room: "outside", name: "Front door", primary: ["contact", "illuminance"], controls: [] },
+  "door-front": {
+    room: "outside",
+    name: "Front door",
+    primary: ["sensor-state-door-window", "illuminance"],
+    controls: [],
+  },
   "door-terrace": { room: "terrace", name: "Terrace door", primary: ["contact"], controls: [] },
   "door-livingroom": {
     room: "livingroom",
     name: "Living room door",
-    primary: ["contact", "illuminance"],
+    primary: ["sensor-state-door-window", "illuminance"],
     controls: [],
   },
   "door-1-storage-street": {
@@ -230,6 +237,7 @@ export const things: Record<string, ThingMeta> = {
     name: "Kitchen siren",
     primary: ["current-value"],
     controls: [{ attr: "target-value", label: "Siren", kind: "boolean" }],
+    labels: { "current-value": "Siren" },
   },
 };
 
@@ -240,10 +248,11 @@ export const PRIMARY_PREFERENCE = [
   "setpoint",
   "setpoint-1",
   "contact",
+  "sensor-state-door-window",
   "occupancy",
   "humidity",
   "illuminance",
-  "current-value",
+  "power",
 ];
 
 /** Telemetry that is never interesting in a default view. */
@@ -251,7 +260,9 @@ export const NOISY_ATTRIBUTES = new Set([
   "linkquality",
   "voltage",
   "battery",
+  "battery-level",
   "battery-low",
+  "low-battery-level",
   "power-outage-count",
   "power-outage-memory",
   "trigger-count",
@@ -265,14 +276,38 @@ export const NOISY_ATTRIBUTES = new Set([
   "electric-consumption-v",
   "electric-power-w",
   "electric-voltage-v",
+  "electric-kwh",
+  "electric-kwh-65539",
+  "electric-v",
+  "electric-w",
+  "electric-w-66051",
   "air-temperature-ep2",
   "temperature-celsius",
   "air-temperature",
+  "exhaust-temperature",
+  "exhaust-temperature-ep2",
+  "illuminance-ep2",
   "setpoint-11",
+  "setpoint-11-ep0",
   "setpoint-2",
   "mode-ep0",
-  "setpoint-11-ep0",
   "action",
+  "current-value",
+  "target-value",
+  "sensor-state-tamper",
+  "tamper",
+  "sensor-state-unknown-0x22",
+  "alarm-level",
+  "alarm-type",
+  "cover-status",
+  "notification-mode",
+  "supports-v1-alarm",
+  "general-purpose",
+  "water-consumption-usgallons",
+  "led-indication",
+  "motion-sensitivity",
+  "occupancy-timeout",
+  "any",
 ]);
 
 export const ATTR_LABELS: Record<string, string> = {
@@ -285,19 +320,26 @@ export const ATTR_LABELS: Record<string, string> = {
   mode: "Mode",
   state: "Power",
   contact: "Contact",
+  "sensor-state-door-window": "Contact",
   occupancy: "Motion",
   illuminance: "Light",
+  "illuminance-lux": "Light",
   battery: "Battery",
+  "battery-level": "Battery",
   linkquality: "Link quality",
   voltage: "Voltage",
   action: "Button",
-  "current-value": "Siren",
-  "target-value": "Siren",
+  "current-value": "State",
+  "target-value": "Target",
   power: "Power draw",
   "device-temperature": "Device temperature",
   "power-outage-count": "Power outages",
   "electric-power-w": "Power",
   "electric-consumption-kwh": "Energy",
+  pressure: "Pressure",
+  "barometric-pressure": "Pressure",
+  "carbon-dioxide-co-level": "CO₂",
+  "particulate-matter-2.5": "PM2.5",
 };
 
 export function roomOf(deviceId: string): string {

@@ -1,4 +1,3 @@
-import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
 import { ApiError, api } from "@/api/client";
 import {
@@ -30,59 +29,25 @@ import {
 } from "@/components/primitives";
 import { StatusHeader } from "@/components/StatusHeader";
 import { describeTestReport, parseRule } from "@/lib/schedule";
-import { tokens } from "@/theme/tokens.stylex";
-
-const styles = stylex.create({
-  table: { width: "100%", borderCollapse: "collapse", fontSize: tokens.fontSm },
-  cell: {
-    textAlign: "left",
-    padding: tokens.space2,
-    borderBottomColor: tokens.border,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-    verticalAlign: "top",
-  },
-  pre: {
-    overflowX: "auto",
-    fontSize: 12,
-    backgroundColor: tokens.surfaceRaised,
-    padding: tokens.space3,
-    borderRadius: tokens.radiusSm,
-  },
-  area: {
-    fontFamily: "ui-monospace, Menlo, monospace",
-    fontSize: 12,
-    width: "100%",
-    minHeight: "300px",
-    backgroundColor: tokens.surfaceRaised,
-    color: tokens.text,
-    borderColor: tokens.border,
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderRadius: tokens.radiusSm,
-    padding: tokens.space3,
-  },
-});
 
 type Tab = "readings" | "documents" | "schedules" | "system";
 
-/** Plumbing, deliberately out of the way (§5.4). */
 export function AdvancedScreen() {
   const [tab, setTab] = useState<Tab>("readings");
   return (
     <div>
       <StatusHeader />
-      <Stack gap={4}>
-        <Row gap={2} wrap>
+      <Stack gap={20}>
+        <Row gap={8} wrap>
           {(
             [
-              ["readings", "All readings"],
-              ["documents", "Things & groups"],
-              ["schedules", "Schedules (raw)"],
-              ["system", "System"],
+              ["readings", "All readings", "table_rows"],
+              ["documents", "Things & groups", "description"],
+              ["schedules", "Schedules (raw)", "code"],
+              ["system", "System", "settings"],
             ] as const
-          ).map(([key, label]) => (
-            <Chip key={key} active={tab === key} onClick={() => setTab(key)}>
+          ).map(([key, label, icon]) => (
+            <Chip key={key} active={tab === key} onClick={() => setTab(key)} icon={icon}>
               {label}
             </Chip>
           ))}
@@ -124,75 +89,84 @@ function ReadingsTable() {
   }, [devices, filter, home]);
 
   return (
-    <Card>
-      <Stack gap={3}>
-        <Row gap={2}>
-          <TextField
-            value={filter}
-            onChange={setFilter}
-            placeholder="filter by thing or attribute (linkquality, battery, …)"
-          />
+    <Card variant="elevated">
+      <Stack gap={14}>
+        <Row gap={12}>
+          <div style={{ flex: 1 }}>
+            <TextField
+              value={filter}
+              onChange={setFilter}
+              placeholder="Filter readings by thing or attribute name…"
+              leadingIcon="filter_list"
+            />
+          </div>
           <Muted>{rows.length} readings</Muted>
         </Row>
-        <table {...stylex.props(styles.table)}>
-          <thead>
-            <tr>
-              <th {...stylex.props(styles.cell)}>Thing</th>
-              <th {...stylex.props(styles.cell)}>Reading</th>
-              <th {...stylex.props(styles.cell)}>Value</th>
-              <th {...stylex.props(styles.cell)}>Last change</th>
-              <th {...stylex.props(styles.cell)}>Set</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.device}-${row.attr}`}>
-                <td {...stylex.props(styles.cell)}>{names.device(row.device)}</td>
-                <td {...stylex.props(styles.cell)}>
-                  {names.attr(row.device, row.attr)} <Muted>{row.attr}</Muted>
-                </td>
-                <td {...stylex.props(styles.cell)}>
-                  {row.state ? names.value(row.device, row.attr, row.state.value) : "—"}
-                </td>
-                <td {...stylex.props(styles.cell)}>
-                  {row.state ? (
-                    <>
-                      <Badge tone="muted">{row.state.source}</Badge> <Muted>{time.rel(row.state.ts)}</Muted>
-                    </>
-                  ) : (
-                    <Muted>never reported</Muted>
-                  )}
-                </td>
-                <td {...stylex.props(styles.cell)}>
-                  {row.spec.write && !home.byDevice.get(row.device)?.locked ? (
-                    <Control
-                      reading={
-                        home.byDevice
-                          .get(row.device)
-                          ?.readings.find((reading) => reading.attr === row.attr) ?? {
-                          device: row.device,
-                          attr: row.attr,
-                          label: names.attr(row.device, row.attr),
-                          value: row.state?.value,
-                          unit: row.spec.unit ?? null,
-                          ts: row.state?.ts ?? null,
-                          source: row.state?.source ?? null,
-                          known: Boolean(row.state),
-                          on: 1,
-                          off: 0,
-                          schedules: [],
-                          isControl: true,
-                        }
-                      }
-                    />
-                  ) : (
-                    <Muted>sensor only</Muted>
-                  )}
-                </td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--md-sys-color-outline-variant)", textAlign: "left" }}>
+                <th style={{ padding: "10px 8px" }}>Device</th>
+                <th style={{ padding: "10px 8px" }}>Reading</th>
+                <th style={{ padding: "10px 8px" }}>Current value</th>
+                <th style={{ padding: "10px 8px" }}>Last update</th>
+                <th style={{ padding: "10px 8px" }}>Control</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={`${row.device}-${row.attr}`}
+                  style={{ borderBottom: "1px solid var(--md-sys-color-surface-container-high)" }}
+                >
+                  <td style={{ padding: "8px", fontWeight: 600 }}>{names.device(row.device)}</td>
+                  <td style={{ padding: "8px" }}>
+                    {names.attr(row.device, row.attr)} <Muted>{row.attr}</Muted>
+                  </td>
+                  <td style={{ padding: "8px", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                    {row.state ? names.value(row.device, row.attr, row.state.value) : "—"}
+                  </td>
+                  <td style={{ padding: "8px" }}>
+                    {row.state ? (
+                      <Row gap={6}>
+                        <Badge tone="muted">{row.state.source}</Badge>
+                        <Muted>{time.rel(row.state.ts)}</Muted>
+                      </Row>
+                    ) : (
+                      <Muted>Never reported</Muted>
+                    )}
+                  </td>
+                  <td style={{ padding: "8px" }}>
+                    {row.spec.write && !home.byDevice.get(row.device)?.locked ? (
+                      <Control
+                        reading={
+                          home.byDevice
+                            .get(row.device)
+                            ?.readings.find((reading) => reading.attr === row.attr) ?? {
+                            device: row.device,
+                            attr: row.attr,
+                            label: names.attr(row.device, row.attr),
+                            value: row.state?.value,
+                            unit: row.spec.unit ?? null,
+                            ts: row.state?.ts ?? null,
+                            source: row.state?.source ?? null,
+                            known: Boolean(row.state),
+                            on: 1,
+                            off: 0,
+                            schedules: [],
+                            isControl: true,
+                          }
+                        }
+                      />
+                    ) : (
+                      <Muted>Sensor reading</Muted>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Stack>
     </Card>
   );
@@ -223,33 +197,43 @@ function Documents() {
   };
 
   return (
-    <Card>
-      <Stack gap={3}>
+    <Card variant="elevated">
+      <Stack gap={14}>
         <Select
-          label="document"
+          label="Document to edit"
           value={which}
           onChange={setWhich}
           options={[
-            ...devices.map((device) => ({ value: `device:${device.id}`, label: `thing: ${device.id}` })),
-            ...groups.map((group) => ({ value: `group:${group.id}`, label: `group: ${group.id}` })),
+            ...devices.map((device) => ({ value: `device:${device.id}`, label: `Device: ${device.id}` })),
+            ...groups.map((group) => ({ value: `group:${group.id}`, label: `Group: ${group.id}` })),
           ]}
         />
         <textarea
-          {...stylex.props(styles.area)}
+          style={{
+            fontFamily: "Roboto Mono, monospace",
+            fontSize: "13px",
+            width: "100%",
+            minHeight: "320px",
+            backgroundColor: "var(--md-sys-color-surface-container-lowest)",
+            color: "var(--md-sys-color-on-surface)",
+            border: "1px solid var(--md-sys-color-outline-variant)",
+            borderRadius: "8px",
+            padding: "12px",
+          }}
           value={text}
           onChange={(event) => setDocuments({ ...documents, [key]: event.target.value })}
         />
         {problems.map((problem) => (
-          <div key={problem} style={{ color: tokens.bad }}>
+          <div key={problem} style={{ color: "var(--md-sys-color-error)", fontSize: "13px" }}>
             {problem}
           </div>
         ))}
-        <Row gap={2}>
-          <Button variant="primary" onClick={save}>
-            save
+        <Row gap={8}>
+          <Button variant="filled" onClick={save}>
+            Save Document
           </Button>
           <Button
-            variant="ghost"
+            variant="tonal"
             onClick={() =>
               setDocuments({
                 ...documents,
@@ -257,9 +241,9 @@ function Documents() {
               })
             }
           >
-            reset
+            Reset
           </Button>
-          <Muted>PUT replaces the document; the backend validates every reference and value</Muted>
+          <Muted>PUT replaces document in persistent storage</Muted>
         </Row>
       </Stack>
     </Card>
@@ -290,48 +274,58 @@ function RawSchedules() {
   };
 
   return (
-    <Stack gap={3}>
+    <Stack gap={14}>
       {rules.map((rule) => {
         const parsed = parseRule(rule);
         return (
-          <Card key={rule.id}>
-            <Stack gap={2}>
-              <Row gap={2} wrap>
-                <strong>{names.rule(rule.id)}</strong>
-                <Badge tone="muted">{rule.id}</Badge>
-                {!parsed.ok ? <Badge tone="warn">raw</Badge> : null}
-                <Button size="small" variant="ghost" onClick={() => test.mutate(rule.id)}>
-                  test
+          <Card key={rule.id} variant="elevated">
+            <Stack gap={12}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                <Row gap={8}>
+                  <strong>{names.rule(rule.id)}</strong>
+                  <Badge tone="muted">{rule.id}</Badge>
+                  {!parsed.ok ? <Badge tone="warn">raw</Badge> : null}
+                </Row>
+                <Button size="small" variant="tonal" icon="play_arrow" onClick={() => test.mutate(rule.id)}>
+                  Test
                 </Button>
-              </Row>
+              </div>
               {test.data?.rule === rule.id ? <Muted>{describeTestReport(test.data, names)}</Muted> : null}
               <textarea
-                {...stylex.props(styles.area)}
-                style={{ minHeight: "180px" }}
+                style={{
+                  fontFamily: "Roboto Mono, monospace",
+                  fontSize: "12px",
+                  minHeight: "180px",
+                  backgroundColor: "var(--md-sys-color-surface-container-lowest)",
+                  color: "var(--md-sys-color-on-surface)",
+                  border: "1px solid var(--md-sys-color-outline-variant)",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
                 value={drafts[rule.id] ?? JSON.stringify(rule, null, 2)}
                 onChange={(event) => setDrafts({ ...drafts, [rule.id]: event.target.value })}
               />
               {problems[rule.id]?.map((problem) => (
-                <div key={problem} style={{ color: tokens.bad }}>
+                <div key={problem} style={{ color: "var(--md-sys-color-error)", fontSize: "13px" }}>
                   {problem}
                 </div>
               ))}
-              <Row gap={2}>
-                <Button variant="primary" onClick={() => saveOne(rule)}>
-                  save
+              <Row gap={8}>
+                <Button variant="filled" onClick={() => saveOne(rule)}>
+                  Save
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="tonal"
                   onClick={() => setDrafts({ ...drafts, [rule.id]: JSON.stringify(rule, null, 2) })}
                 >
-                  reset
+                  Reset
                 </Button>
               </Row>
             </Stack>
           </Card>
         );
       })}
-      {rules.length === 0 ? <Empty>no schedules</Empty> : null}
+      {rules.length === 0 ? <Empty>No schedules defined</Empty> : null}
     </Stack>
   );
 }
@@ -340,36 +334,60 @@ function SystemPanel() {
   const ready = useReady();
   const actions = useSystemActions();
   return (
-    <Card>
-      <Stack gap={3}>
-        <Row gap={3} wrap>
-          <Row gap={2}>
+    <Card variant="elevated">
+      <Stack gap={16}>
+        <Row gap={16} wrap>
+          <Row gap={8}>
             <Switch
               checked={Boolean(ready.data?.dry_run)}
-              label="dry run"
+              label="Dry run"
               onChange={(next) => actions.dryRun.mutate(next)}
             />
-            <span>dry run (plan writes, publish nothing)</span>
+            <span>Dry run (simulate actions without publishing)</span>
           </Row>
-          <Button onClick={() => actions.reload.mutate()}>reload configuration</Button>
-          <a href={`${api.base}/metrics`} target="_blank" rel="noreferrer">
-            metrics
+          <Button variant="tonal" icon="refresh" onClick={() => actions.reload.mutate()}>
+            Reload configuration
+          </Button>
+          <a
+            href={`${api.base}/metrics`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "var(--md-sys-color-primary)", fontWeight: 500 }}
+          >
+            Prometheus metrics
           </a>
-          <a href={`${api.base}/docs`} target="_blank" rel="noreferrer">
-            API docs
+          <a
+            href={`${api.base}/docs`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "var(--md-sys-color-primary)", fontWeight: 500 }}
+          >
+            REST API Swagger Docs
           </a>
         </Row>
         {ready.data?.warnings.length ? (
-          <Stack gap={1}>
-            <strong>Warnings</strong>
+          <Stack gap={6}>
+            <strong style={{ color: "var(--md-sys-color-warning)" }}>Active Warnings</strong>
             {ready.data.warnings.map((warning) => (
-              <div key={warning}>{warning}</div>
+              <div key={warning} style={{ fontSize: "13px" }}>
+                • {warning}
+              </div>
             ))}
           </Stack>
         ) : null}
         <details>
-          <summary>health payload</summary>
-          <pre {...stylex.props(styles.pre)}>{JSON.stringify(ready.data, null, 2)}</pre>
+          <summary style={{ cursor: "pointer", fontWeight: 500 }}>System Health JSON Payload</summary>
+          <pre
+            style={{
+              fontFamily: "Roboto Mono, monospace",
+              fontSize: "12px",
+              padding: "12px",
+              borderRadius: "8px",
+              backgroundColor: "var(--md-sys-color-surface-container-lowest)",
+            }}
+          >
+            {JSON.stringify(ready.data, null, 2)}
+          </pre>
         </details>
       </Stack>
     </Card>

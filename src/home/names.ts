@@ -40,7 +40,9 @@ export function makeNames(devices: Device[], rules: Rule[], groups: Group[]): Na
       return byGroup.get(id)?.name ?? humanize(id);
     },
     attr: (deviceId, attribute) => {
-      const curated = things[deviceId]?.controls.find((control) => control.attr === attribute)?.label;
+      const curated =
+        things[deviceId]?.labels?.[attribute] ??
+        things[deviceId]?.controls.find((control) => control.attr === attribute)?.label;
       return curated ?? ATTR_LABELS[attribute] ?? humanize(attribute);
     },
     unit: (deviceId, attribute) => {
