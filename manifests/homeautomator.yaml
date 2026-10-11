@@ -1,8 +1,30 @@
+# home-automator: one replica, one PVC, one Service, no auth in the app.
+#
+# Build:  docker/build.sh homeautomator     (builds on the node and loads the image)
+# Deploy: kubectl apply -f manifests/homeautomator.yaml
+# Seed:   kubectl exec deploy/homeautomator -- python /opt/seed/install.py /data
+#
+# This replaces the old application (Deployment and ConfigMap "homeautomator-config").
+# To rehearse instead of writing, set DRY_RUN=true:
+#   kubectl set env deployment/homeautomator DRY_RUN=true
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: homeautomator-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: homeautomator
 spec:
+  replicas: 1 # single writer: config.json, pending.json and events.jsonl are plain files
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: homeautomator
@@ -11,16 +33,63 @@ spec:
       labels:
         app: homeautomator
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
       containers:
-      - name: homeautomator
-        image: quay.io/tsaarni/home-automator:latest
-        env:
-          - name: TZ
-            value: Europe/Helsinki
-        volumeMounts:
-        - mountPath: /config
-          name: config
+        - name: homeautomator
+          image: quay.io/tsaarni/home-automator:latest
+          imagePullPolicy: IfNotPresent # the image is loaded from a local build
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            # everything else is a document in config.json on the PVC
+            - name: MQTT_URL
+              value: mosquitto
+            - name: DATA_DIR
+              value: /data
+            - name: TZ
+              value: Europe/Helsinki
+            - name: LAT
+              value: "60.4518"
+            - name: LON
+              value: "22.2666"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 10m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
       volumes:
-      - name: config
-        configMap:
-          name: homeautomator-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: homeautomator-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homeautomator
+spec:
+  selector:
+    app: homeautomator
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

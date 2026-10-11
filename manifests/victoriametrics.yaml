@@ -62,7 +62,7 @@ data:
     scrape_configs:
       - job_name: prometheus
         static_configs:
-          - targets: ["nodered:1880"]
+          - targets: []
 
 # error:
 #   cannot acquire lock on file "/victoria-metrics-data/flock.lock": resource temporarily unavailable
