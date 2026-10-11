@@ -40,15 +40,17 @@ describe("schedule round trip", () => {
   });
 
   it("keeps unknown keys inside an action whose reading did not change", () => {
-    const base = rules.find((item) => item.id === "terrace-dusk") as Rule;
+    const source = rules.find((item) => item.id === "terrace-dusk") as Rule;
+    const action = source.then[0] as Rule["then"][number];
     const rule = {
-      ...base,
-      then: [{ ...base.then[0], set: { ...base.then[0]?.set, some_future_field: 7 } }],
+      ...source,
+      then: [{ ...action, set: { ...action.set, some_future_field: 7 } }],
     } as Rule;
     const parsed = parseRule(rule);
     if (!parsed.ok) throw new Error("expected a representable rule");
     const rebuilt = applySchedule(rule, parsed.schedule);
-    expect((rebuilt.then[0]?.set as Record<string, unknown>).some_future_field).toBe(7);
+    const set = rebuilt.then[0]?.set as Record<string, unknown> | undefined;
+    expect(set?.some_future_field).toBe(7);
   });
 
   it("flags the heating curve and other unsupported actions", () => {
