@@ -1,6 +1,6 @@
-# Build:  docker/build.sh homemetrics      (see ../README.md)
+# Build and push: see ../README.md (commands run from the repository root)
 # Manual: podman build -f docker/homemetrics/Dockerfile -t quay.io/tsaarni/home-metrics:latest ~/hobby/home-metrics
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 LABEL org.opencontainers.image.title="home-metrics" \
       org.opencontainers.image.description="Metrics scraper pushing to VictoriaMetrics" \

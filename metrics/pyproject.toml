@@ -3,7 +3,7 @@ name = "home-metrics"
 version = "1.0.0"
 description = "Metrics scraper pushing to VictoriaMetrics"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "aiohttp>=3.10.0",
     "aiomqtt>=2.3.0",

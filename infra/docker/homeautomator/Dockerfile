@@ -1,9 +1,9 @@
-# Build:  docker/build.sh homeautomator      (see ../README.md)
+# Build and push: see ../README.md (commands run from the repository root)
 # Manual: podman build -f docker/homeautomator/Dockerfile -t quay.io/tsaarni/home-automator:latest ~/hobby/home-automator
 #
 # The image holds the installed package plus the seed documents and the extraction tool in
 # /opt/seed (see seed/README.md). The service keeps its data in DATA_DIR, which is a volume.
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 LABEL org.opencontainers.image.title="home-automator" \
       org.opencontainers.image.description="Home automation as data: devices, groups and rules as JSON documents" \

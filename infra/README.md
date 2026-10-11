@@ -71,38 +71,8 @@ kubectl create secret generic cloudflared-token --from-file=secrets/cloudflared-
 
 ## Deploy apps
 
-All images are built with `docker/build.sh`. It builds on the node and loads the result into
-containerd, so a laptop needs `kubectl` only.
-
-```console
-docker/build.sh --list                     # images that can be built, and their settings
-docker/build.sh homeautomator              # build, load, restart deployment/homeautomator
-docker/build.sh homeautomator --no-restart # build and load only
-docker/build.sh homeautomator --dry-run    # print the resolved settings, build nothing
-docker/build.sh --help                     # what the script does and all options
-```
-
-Each image has a small configuration file `docker/<name>/image.conf`:
-
-```bash
-# docker/homeautomator/image.conf
-CONTEXT="$MONO_DIR/automator"                             # build context
-CONTEXT_FILES="pyproject.toml README.md src seed"         # files to pack
-TAG="quay.io/tsaarni/home-automator:latest"               # keep equal to the manifest image
-DEPLOYMENT="homeautomator"                                # restart after loading
-```
-
-Defaults: context `docker/<name>`, Dockerfile `docker/<name>/Dockerfile`, tag `<name>:latest`,
-no deployment restart. The build runs in a temporary privileged pod on the node (it needs the
-k3s containerd socket), and the layer cache stays in `/var/lib/rancher/<name>-build/podman`.
-
-The manual equivalent, when you have ssh and sudo on the node:
-
-```console
-podman build --tag quay.io/tsaarni/home-automator:latest -f docker/homeautomator/Dockerfile ../automator
-podman save quay.io/tsaarni/home-automator:latest | sudo k3s ctr images import -
-sudo k3s ctr images ls | grep home-automator
-```
+For the Buildx workflow that builds on `mele` and pushes to Quay, see
+[docker/README.md](docker/README.md). It covers building and pushing both services, and the builder setup.
 
 ### home-automator
 
@@ -110,7 +80,7 @@ The application source is in `../automator`. This directory holds the image reci
 (`docker/homeautomator/`) and the manifest (`manifests/homeautomator.yaml`).
 
 ```console
-docker/build.sh homeautomator                 # build, load and restart the Deployment
+kubectl apply -f manifests/homeautomator.yaml # apply after updating the image tag
 kubectl exec deploy/homeautomator -- python /opt/seed/install.py /data   # install or update the documents
 kubectl logs deploy/homeautomator --tail=20
 kubectl port-forward svc/homeautomator 8080:80 &
@@ -128,8 +98,7 @@ Notes
   `../automator/seed/README.md` for how they are extracted from the gateways.
 * The Deployment uses one replica and `strategy: Recreate`, because the service is a single
   writer of its files.
-* The image is loaded, not pulled, so `imagePullPolicy: IfNotPresent`. After a node reinstall,
-  run `docker/build.sh homeautomator` again.
+* Update the manifest to the image tag pushed to Quay, then apply it to deploy a build.
 * To rehearse instead of writing to the devices: `kubectl set env deployment/homeautomator
   DRY_RUN=true` and read `/api/v1/events` for `dry-run` writes.
 

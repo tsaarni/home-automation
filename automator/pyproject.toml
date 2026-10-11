@@ -3,7 +3,7 @@ name = "home-automator"
 version = "1.0.0"
 description = "Home automation as data: devices, groups and rules as JSON documents"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "aiomqtt==2.5.1",
     "astral==3.2",

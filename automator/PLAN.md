@@ -8,7 +8,7 @@ Everything the deployed app does today is reproduced as a small set of rule docu
 
 | Topic | Choice |
 |---|---|
-| Language | Python 3.13, FastAPI, pydantic v2, aiomqtt |
+| Language | Python 3.14, FastAPI, pydantic v2, aiomqtt |
 | UI | One static HTML page, no build step, served by the app |
 | Repo | Overhaul in place (`git history keeps the old code`) |
 | Auth | None in app — Cloudflare Access at the edge |

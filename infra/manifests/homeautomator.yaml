@@ -1,6 +1,6 @@
 # home-automator: one replica, one PVC, one Service, no auth in the app.
 #
-# Build:  docker/build.sh homeautomator     (builds on the node and loads the image)
+# Build and push: see ../docker/README.md
 # Deploy: kubectl apply -f manifests/homeautomator.yaml
 # Seed:   kubectl exec deploy/homeautomator -- python /opt/seed/install.py /data
 #
@@ -40,7 +40,7 @@ spec:
       containers:
         - name: homeautomator
           image: quay.io/tsaarni/home-automator:latest
-          imagePullPolicy: IfNotPresent # the image is loaded from a local build
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 80

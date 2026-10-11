@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 config.yaml
-.python-version
+# .python-version is committed to keep the development interpreter consistent.
 
 # runtime data (config.json, pending.json, events.jsonl)
 data/

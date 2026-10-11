@@ -155,7 +155,7 @@ GET    /metrics   GET /healthz   GET /readyz   GET / (UI)   /openapi.json   /doc
 ## Running it
 
 ```bash
-uv sync                       # install dependencies (Python 3.13+)
+uv sync                       # install dependencies (Python 3.14+)
 uv run python -m automator    # DATA_DIR=./data, PORT=80 by default
 
 DATA_DIR=/tmp/automator PORT=8099 MQTT_URL=none DRY_RUN=true \
