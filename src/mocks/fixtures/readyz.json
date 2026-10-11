@@ -1,0 +1,18 @@
+{
+  "status": "ok",
+  "version": "1.0.0",
+  "dry_run": false,
+  "mqtt_enabled": true,
+  "mqtt_connected": true,
+  "data_dir": "/data",
+  "timezone": "Europe/Helsinki",
+  "started_at": "2026-10-11T12:10:26.444418+00:00",
+  "uptime_seconds": 1596.3,
+  "devices": 40,
+  "groups": 1,
+  "rules": 9,
+  "pending_timers": 0,
+  "state_values": 70,
+  "config_version": 4,
+  "warnings": []
+}
