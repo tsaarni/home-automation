@@ -7,16 +7,20 @@
 # - Allows setting the optional timestamp parameter for each metric, which is needed when polling
 #   the car data and electricity prices, which may contain data that was already scraped last time.
 
+from __future__ import annotations
 
-from typing import Dict, List, Optional
 
-
-class Samples(object):
-    def __init__(self, labels):
+class Samples:
+    def __init__(self, labels: dict[str, str] | None = None):
         self.common_labels_for_all_samples = labels if labels else {}
-        self.samples = []
+        self.samples: list[dict] = []
 
-    def add(self, value: float, labels: Optional[Dict[str, str]] = None, timestamp_msec: Optional[float] = None):
+    def add(
+        self,
+        value: float,
+        labels: dict[str, str] | None = None,
+        timestamp_msec: float | None = None,
+    ) -> None:
         self.samples.append(
             {
                 "value": round(value, 3),
@@ -25,7 +29,7 @@ class Samples(object):
             }
         )
 
-    def format(self) -> List[str]:
+    def format(self) -> list[str]:
         output = []
         for sample in self.samples:
             s = ""
@@ -36,21 +40,26 @@ class Samples(object):
 
             s += f"{sample['value']}"
 
-            if sample["timestamp"]:
+            if sample["timestamp"] is not None:
                 s += f" {sample['timestamp']}"
 
             output.append(s)
         return output
 
 
-class Metrics(object):
+class Metrics:
     def __init__(self):
-        self.samples = []
+        self.samples: list[dict] = []
 
     def num_samples(self) -> int:
         return len(self.samples)
 
-    def counter(self, name: str, description: str = "", labels: Optional[Dict[str, str]] = None) -> Samples:
+    def counter(
+        self,
+        name: str,
+        description: str = "",
+        labels: dict[str, str] | None = None,
+    ) -> Samples:
         s = Samples(labels)
         self.samples.append(
             {
@@ -62,7 +71,12 @@ class Metrics(object):
         )
         return s
 
-    def gauge(self, name: str, description: str = "", labels: Optional[Dict[str, str]] = None) -> Samples:
+    def gauge(
+        self,
+        name: str,
+        description: str = "",
+        labels: dict[str, str] | None = None,
+    ) -> Samples:
         s = Samples(labels)
         self.samples.append(
             {

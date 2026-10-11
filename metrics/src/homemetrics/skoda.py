@@ -2,16 +2,15 @@ import asyncio
 import datetime
 import logging
 
-import prometheus
-import task
-import utils
 from aiohttp import ClientSession
 from skodaconnect import Connection
+
+from . import prometheus, task, utils
 
 logger = logging.getLogger("app.skoda")
 
 
-class Skoda(object):
+class Skoda:
     def configure(self, instance_name, config):
         self.instance_name = instance_name
         self.username = config["username"]

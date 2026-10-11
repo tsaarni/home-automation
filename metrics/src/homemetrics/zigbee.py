@@ -4,13 +4,13 @@ import logging
 
 import aiomqtt
 import httpx
-import prometheus
-import task
+
+from . import prometheus, task
 
 logger = logging.getLogger("app.zigbee")
 
 
-class Zigbee(object):
+class Zigbee:
     def configure(self, instance_name, config):
         self.instance_name = instance_name
         self.server = config["server"]
@@ -67,8 +67,8 @@ class Zigbee(object):
                 samples = metrics.gauge(mapping[k], "")
                 samples.add(v, labels={"sensor": sensor_name})
 
-        client = httpx.AsyncClient()
-        await client.post(self.database_url, content=metrics.format())
+        async with httpx.AsyncClient() as client:
+            await client.post(self.database_url, content=metrics.format())
 
 
 task.register(Zigbee, "zigbee")

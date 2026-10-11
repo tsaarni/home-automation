@@ -50,8 +50,8 @@ uv run pytest -q
 ### Metrics (`metrics/`)
 ```bash
 cd metrics
-uv sync # or pip install -r requirements.txt
-python3 src/main.py --config config.yaml
+uv sync
+uv run python -m homemetrics --config config.yaml
 ```
 
 ### Web UI (`webui/`)

@@ -2,14 +2,13 @@ import asyncio
 import logging
 
 import httpx
-import prometheus
-import task
-import utils
+
+from . import prometheus, task, utils
 
 logger = logging.getLogger("app.shelly2")
 
 
-class Shelly2(object):
+class Shelly2:
     def configure(self, instance_name, config):
         self.instance_name = instance_name
         self.url = config["url"]
@@ -30,34 +29,34 @@ class Shelly2(object):
     async def update_metrics(self):
         logger.debug(f"Fetching data: url={self.url}")
 
-        client = httpx.AsyncClient()
-        response = await client.post(self.url, json={"id": 1, "method": "Shelly.GetStatus"})
+        async with httpx.AsyncClient() as client:
+            response = await client.post(self.url, json={"id": 1, "method": "Shelly.GetStatus"})
 
-        if response.status_code == 200:
-            res = response.json()
+            if response.status_code == 200:
+                res = response.json()
 
-            metrics = prometheus.Metrics()
+                metrics = prometheus.Metrics()
 
-            samples = metrics.gauge("electric_power_w", "Instantaneous power in Watt.")
-            samples.add(res["result"]["switch:0"]["apower"], labels={"sensor": self.instance_name, "phase": "all"})
+                samples = metrics.gauge("electric_power_w", "Instantaneous power in Watt.")
+                samples.add(res["result"]["switch:0"]["apower"], labels={"sensor": self.instance_name, "phase": "all"})
 
-            samples = metrics.counter("electric_consumption_kwh", "Total consumed energy in kWh.")
-            samples.add(
-                res["result"]["switch:0"]["aenergy"]["total"] / 1000,
-                labels={"sensor": self.instance_name, "phase": "all"},
-            )
+                samples = metrics.counter("electric_consumption_kwh", "Total consumed energy in kWh.")
+                samples.add(
+                    res["result"]["switch:0"]["aenergy"]["total"] / 1000,
+                    labels={"sensor": self.instance_name, "phase": "all"},
+                )
 
-            samples = metrics.gauge("electric_current_a", "Current in Amps")
-            samples.add(res["result"]["switch:0"]["current"], labels={"sensor": self.instance_name})
+                samples = metrics.gauge("electric_current_a", "Current in Amps")
+                samples.add(res["result"]["switch:0"]["current"], labels={"sensor": self.instance_name})
 
-            samples = metrics.gauge("electric_voltage_v", "RMS voltage in Volts")
-            samples.add(res["result"]["switch:0"]["voltage"], labels={"sensor": self.instance_name})
+                samples = metrics.gauge("electric_voltage_v", "RMS voltage in Volts")
+                samples.add(res["result"]["switch:0"]["voltage"], labels={"sensor": self.instance_name})
 
-        else:
-            raise task.TaskException(f"failed to fetch data: {response.status_code}")
+            else:
+                raise task.TaskException(f"failed to fetch data: {response.status_code}")
 
-        logger.debug(f"Storing metrics: url={self.database_url}")
-        await client.post(self.database_url, content=metrics.format())
+            logger.debug(f"Storing metrics: url={self.database_url}")
+            await client.post(self.database_url, content=metrics.format())
 
 
 task.register(Shelly2, "shelly2")

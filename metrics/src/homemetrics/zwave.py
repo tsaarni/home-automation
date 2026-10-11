@@ -3,13 +3,12 @@ import datetime
 import json
 import logging
 import re
+from dataclasses import dataclass
 
 import aiomqtt
 import httpx
-import prometheus
-import task
 
-from dataclasses import dataclass
+from . import prometheus, task
 
 logger = logging.getLogger("app.zwave")
 
@@ -22,7 +21,7 @@ class SensorData:
     time: int
 
 
-class Zwave(object):
+class Zwave:
     def configure(self, instance_name, config):
         self.instance_name = instance_name
         self.server = config["server"]
@@ -69,7 +68,8 @@ class Zwave(object):
                     metrics.gauge(data.property, labels={"sensor": data.sensor}).add(
                         data.value, timestamp_msec=data.time
                     )
-                    await httpx.AsyncClient().post(self.database_url, content=metrics.format())
+                    async with httpx.AsyncClient() as http_client:
+                        await http_client.post(self.database_url, content=metrics.format())
 
                     # Publish the data to the MQTT broker.
                     await client.publish(f"home/{data.sensor}/{data.property}", data.value)

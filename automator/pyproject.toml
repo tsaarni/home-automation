@@ -12,6 +12,9 @@ dependencies = [
     "uvicorn==0.54.0",
 ]
 
+[project.scripts]
+automator = "automator.__main__:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

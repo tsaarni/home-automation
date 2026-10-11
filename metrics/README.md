@@ -21,21 +21,19 @@ Supported sources:
 Install dependencies with:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 Execute the application:
 
 ```bash
-python3 src/main.py --config config.yaml
+uv run python -m homemetrics --config config.yaml
 ```
 
 Run the test web server to see the metrics being pushed to it in Prometheus exposition format:
 
 ```bash
-python3 tests/httpserver.py
+uv run python tests/httpserver.py
 ```
 
 Build the container image:
