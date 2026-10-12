@@ -1,3 +1,4 @@
+# Sample inventory. Replace the example addresses and device IDs before running.
 mqtt:
   host: mosquitto
   port: 1883
@@ -11,31 +12,16 @@ accounts:
     username_env: MELCLOUD_USERNAME
     password_env: MELCLOUD_PASSWORD
 devices:
-  plug-livingroom:
+  example-plug:
     adapter: shelly-rpc
-    name: Living room plug
-    url: http://192.168.86.90
-    expected_device_id: shellyplugsg3-5432045cc35c
-  plug-storage-street:
-    adapter: shelly-rpc
-    name: Street side storage plug
-    url: http://192.168.86.133
-    expected_device_id: shellyoutdoorsg3-e4b063dac314
-  heater-storage-car:
-    adapter: shelly-rpc
-    name: Storage car heater
-    url: http://192.168.86.41
-    expected_device_id: shellyplus1pm-4855199d80c8
-  heater-storage-street:
-    adapter: shelly-rpc
-    name: Storage street heater
-    url: http://192.168.86.40
-    expected_device_id: shellyplus1pm-4855199bec80
-  heatpump:
+    name: Example plug
+    url: http://192.0.2.10
+    expected_device_id: shellyplugsg3-000000000000 # Replace with Shelly.GetDeviceInfo's id.
+  example-heatpump:
     adapter: melcloud-ata
-    name: Heat pump
+    name: Example heat pump
     account: melcloud-main
-    device_id: 210764 # inspected read-only on 2026-10-11
+    device_id: 123456 # Replace with the ID from User/ListDevices.
     poll_interval: 5m
     followup_interval: 60s
     result_timeout: 5m

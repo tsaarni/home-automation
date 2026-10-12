@@ -16,7 +16,8 @@ uv run device-gateway --config config.yaml inspect
 uv run device-gateway --config config.yaml run
 ```
 
-Set the referenced secrets in the environment. For MELCloud, use a Celsius account and the
+Replace the sample addresses and device IDs in `config.yaml` with your device inventory.
+Set the referenced credentials in the environment. For MELCloud, use a Celsius account and the
 device ID from `User/ListDevices`. Configure setpoint bounds from device metadata.
 
 ## Automator bindings
