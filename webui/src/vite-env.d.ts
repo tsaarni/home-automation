@@ -1,15 +1,13 @@
 /// <reference types="vite/client" />
 import type React from "react";
 
-interface ImportMetaEnv {
-  readonly VITE_API_BASE?: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
 declare global {
+  interface ImportMetaEnv {
+    readonly VITE_API_BASE?: string;
+  }
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
   namespace React.JSX {
     interface IntrinsicElements {
       "md-filled-button": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
@@ -56,6 +54,11 @@ declare global {
         value?: string;
         placeholder?: string;
         type?: string;
+        disabled?: boolean;
+        required?: boolean;
+        error?: boolean;
+        "error-text"?: string;
+        "supporting-text"?: string;
         min?: number;
         max?: number;
         step?: number;

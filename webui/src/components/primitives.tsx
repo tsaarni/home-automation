@@ -1,8 +1,8 @@
-import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useId, useRef } from "react";
 
 export function Icon({ name, slot }: { name: string; slot?: string }) {
   return (
-    <span className="material-symbols-outlined" slot={slot}>
+    <span aria-hidden="true" className="material-symbols-outlined" slot={slot}>
       {name}
     </span>
   );
@@ -86,8 +86,7 @@ export function Card({
         ? "var(--md-sys-color-surface-container)"
         : "var(--md-sys-color-surface)";
 
-  const border =
-    variant === "outlined" ? "1px solid var(--md-sys-color-outline-variant)" : "none";
+  const border = variant === "outlined" ? "1px solid var(--md-sys-color-outline-variant)" : "none";
 
   return (
     <div
@@ -120,6 +119,7 @@ export function Button({
   title,
   type = "button",
   icon,
+  size = "medium",
 }: {
   children?: ReactNode;
   onClick?: () => void;
@@ -130,11 +130,18 @@ export function Button({
   type?: "button" | "submit";
   icon?: string;
 }) {
+  const buttonClass = size === "small" ? "button-small" : undefined;
   const iconEl = icon ? <Icon slot="icon" name={icon} /> : null;
 
   if (variant === "tonal") {
     return (
-      <md-filled-tonal-button disabled={disabled} title={title} type={type} onClick={onClick}>
+      <md-filled-tonal-button
+        className={buttonClass}
+        disabled={disabled}
+        title={title}
+        type={type}
+        onClick={onClick}
+      >
         {iconEl}
         {children}
       </md-filled-tonal-button>
@@ -142,7 +149,13 @@ export function Button({
   }
   if (variant === "outlined") {
     return (
-      <md-outlined-button disabled={disabled} title={title} type={type} onClick={onClick}>
+      <md-outlined-button
+        className={buttonClass}
+        disabled={disabled}
+        title={title}
+        type={type}
+        onClick={onClick}
+      >
         {iconEl}
         {children}
       </md-outlined-button>
@@ -150,7 +163,7 @@ export function Button({
   }
   if (variant === "text") {
     return (
-      <md-text-button disabled={disabled} title={title} type={type} onClick={onClick}>
+      <md-text-button className={buttonClass} disabled={disabled} title={title} type={type} onClick={onClick}>
         {iconEl}
         {children}
       </md-text-button>
@@ -158,7 +171,13 @@ export function Button({
   }
   if (variant === "elevated") {
     return (
-      <md-elevated-button disabled={disabled} title={title} type={type} onClick={onClick}>
+      <md-elevated-button
+        className={buttonClass}
+        disabled={disabled}
+        title={title}
+        type={type}
+        onClick={onClick}
+      >
         {iconEl}
         {children}
       </md-elevated-button>
@@ -167,10 +186,13 @@ export function Button({
   if (variant === "danger") {
     return (
       <md-filled-button
-        style={{
-          "--md-filled-button-container-color": "var(--md-sys-color-error)",
-          "--md-filled-button-label-text-color": "var(--md-sys-color-on-error)",
-        } as CSSProperties}
+        className={buttonClass}
+        style={
+          {
+            "--md-filled-button-container-color": "var(--md-sys-color-error)",
+            "--md-filled-button-label-text-color": "var(--md-sys-color-on-error)",
+          } as CSSProperties
+        }
         disabled={disabled}
         title={title}
         type={type}
@@ -182,7 +204,7 @@ export function Button({
     );
   }
   return (
-    <md-filled-button disabled={disabled} title={title} type={type} onClick={onClick}>
+    <md-filled-button className={buttonClass} disabled={disabled} title={title} type={type} onClick={onClick}>
       {iconEl}
       {children}
     </md-filled-button>
@@ -201,7 +223,7 @@ export function IconButton({
   disabled?: boolean;
 }) {
   return (
-    <md-icon-button disabled={disabled} title={title} onClick={onClick}>
+    <md-icon-button disabled={disabled} title={title} aria-label={title ?? icon} onClick={onClick}>
       <Icon name={icon} />
     </md-icon-button>
   );
@@ -261,6 +283,12 @@ export function TextField({
   step,
   style,
   leadingIcon,
+  id,
+  disabled,
+  required,
+  error,
+  supportingText,
+  onBlur,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -272,6 +300,12 @@ export function TextField({
   step?: number;
   style?: CSSProperties;
   leadingIcon?: string;
+  id?: string;
+  disabled?: boolean;
+  required?: boolean;
+  error?: string;
+  supportingText?: string;
+  onBlur?: () => void;
 }) {
   const ref = useRef<HTMLElement | null>(null);
 
@@ -289,6 +323,14 @@ export function TextField({
   return (
     <md-outlined-text-field
       ref={ref}
+      id={id}
+      disabled={disabled}
+      required={required}
+      error={Boolean(error)}
+      error-text={error}
+      supporting-text={supportingText}
+      aria-invalid={Boolean(error)}
+      onBlur={onBlur}
       label={label}
       value={value}
       type={type}
@@ -335,7 +377,12 @@ export function Select({
   return (
     <md-outlined-select ref={ref} label={label} value={value} disabled={disabled}>
       {options.map((opt) => (
-        <md-select-option key={opt.value} value={opt.value} headline={opt.label} selected={opt.value === value}>
+        <md-select-option
+          key={opt.value}
+          value={opt.value}
+          headline={opt.label}
+          selected={opt.value === value}
+        >
           <div slot="headline">{opt.label}</div>
         </md-select-option>
       ))}
@@ -419,7 +466,8 @@ export function Badge({
         fontWeight: 500,
         backgroundColor: bg,
         color,
-        whiteSpace: "nowrap",
+        whiteSpace: "normal",
+        overflowWrap: "anywhere",
       }}
     >
       {children}
@@ -435,29 +483,44 @@ export function Dialog({
   children,
   footer,
   onClose,
+  wide = false,
+  beforeClose,
 }: {
   title: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  beforeClose?: () => boolean;
 }) {
   const ref = useRef<HTMLElement | null>(null);
-
+  const callbacks = useRef({ onClose, beforeClose });
+  callbacks.current = { onClose, beforeClose };
+  const titleId = useId();
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
     const el = ref.current;
     if (!el) return;
-    // @ts-expect-error open on dialog
-    el.open = true;
-    const handleClose = () => onClose();
-    el.addEventListener("close", handleClose);
-    return () => el.removeEventListener("close", handleClose);
-  }, [onClose]);
-
+    const cancel = (event: Event) => {
+      if (callbacks.current.beforeClose && !callbacks.current.beforeClose()) event.preventDefault();
+    };
+    const close = () => callbacks.current.onClose();
+    el.addEventListener("cancel", cancel);
+    el.addEventListener("close", close);
+    return () => {
+      el.removeEventListener("cancel", cancel);
+      el.removeEventListener("close", close);
+      requestAnimationFrame(() => {
+        if (opener?.isConnected) opener.focus();
+      });
+    };
+  }, []);
   return (
-    <md-dialog ref={ref} open>
-      <div slot="headline">{title}</div>
-      <div slot="content" style={{ display: "flex", flexDirection: "column", gap: "16px", minWidth: "320px" }}>
+    <md-dialog ref={ref} open className={wide ? "dialog-wide" : "dialog-compact"} aria-labelledby={titleId}>
+      <div slot="headline" id={titleId}>
+        {title}
+      </div>
+      <div slot="content" className="dialog-content">
         {children}
       </div>
       <div slot="actions">{footer}</div>
@@ -469,25 +532,33 @@ export function Toggle({
   checked,
   onChange,
   label,
+  disabled,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: string;
+  disabled?: boolean;
 }) {
   return (
-    <Row gap={8}>
-      <Switch checked={checked} onChange={onChange} label={label} />
+    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+      <Switch checked={checked} onChange={onChange} label={label} disabled={disabled} />
       <span style={{ fontSize: "14px" }}>{label}</span>
-    </Row>
+    </label>
   );
 }
 
 export function Label({ children }: { children: ReactNode }) {
-  return <span style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)", fontWeight: 500 }}>{children}</span>;
+  return (
+    <span style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)", fontWeight: 500 }}>
+      {children}
+    </span>
+  );
 }
 
 export function Muted({ children }: { children: ReactNode }) {
-  return <span style={{ color: "var(--md-sys-color-on-surface-variant)", fontSize: "13px" }}>{children}</span>;
+  return (
+    <span style={{ color: "var(--md-sys-color-on-surface-variant)", fontSize: "13px" }}>{children}</span>
+  );
 }
 
 export function Mono({ children }: { children: ReactNode }) {
@@ -500,7 +571,9 @@ export function Tabular({ children, style }: { children: ReactNode; style?: CSSP
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <div style={{ padding: "48px 16px", textAlign: "center", color: "var(--md-sys-color-on-surface-variant)" }}>
+    <div
+      style={{ padding: "48px 16px", textAlign: "center", color: "var(--md-sys-color-on-surface-variant)" }}
+    >
       {children}
     </div>
   );

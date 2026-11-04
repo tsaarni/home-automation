@@ -90,3 +90,20 @@ describe("schedule round trip", () => {
     });
   });
 });
+
+it("preserves solar day restrictions, delay and action metadata after removing another action", () => {
+  const source = rules.find((r) => r.id === "terrace-dusk") as Rule;
+  const rule = {
+    ...source,
+    when: { at: "sunset", changed: false, days: ["Mon", "Fri"], offset: "-30m", extra: 7 },
+    for: "1w",
+    then: [source.then[0], { set: { device: "second", attr: "state", value: "OFF", extra: "preserve" } }],
+  } as Rule;
+  const parsed = parseRule(rule);
+  if (!parsed.ok) throw new Error("Expected supported rule");
+  parsed.schedule.then = parsed.schedule.then.slice(1);
+  const rebuilt = applySchedule(rule, parsed.schedule);
+  expect(rebuilt.when).toEqual(rule.when);
+  expect(rebuilt.for).toBe("1w");
+  expect(rebuilt.then).toEqual([rule.then[1]]);
+});

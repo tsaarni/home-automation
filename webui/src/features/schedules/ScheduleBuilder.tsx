@@ -1,858 +1,773 @@
-import { useMemo, useState } from "react";
-import { useDevices, useGroups, useNames, useSaveRule } from "@/api/queries";
-import type { Attribute, Device, Group, Rule, Scalar, Term } from "@/api/types";
-import {
-  Badge,
-  Button,
-  Chip,
-  Dialog,
-  Icon,
-  Label,
-  Muted,
-  Row,
-  Select,
-  Stack,
-  Switch,
-  TextField,
-} from "@/components/primitives";
+import { useRef, useState } from "react";
+import { Link } from "react-router";
+import { useDevices, useGroups, useNames, useRules, useSaveRule } from "@/api/queries";
+import type { Attribute, Device, Rule, Scalar, Term } from "@/api/types";
+import { Button, Dialog, Muted, Select, Stack, TextField, Toggle } from "@/components/primitives";
 import { attrLabel } from "@/home/derive";
-import { durationWords } from "@/lib/format";
+import { durationSeconds } from "@/lib/duration";
 import {
   applySchedule,
   type Clause,
   clauseFor,
   DAYS,
-  DURATION_CHOICES,
   describeSchedule,
   emptySchedule,
-  HOLD_CHOICES,
-  type ParsedSchedule,
   parseRule,
   SOLAR_EVENTS,
   slugify,
   type Trigger,
   unrepresentable,
 } from "@/lib/schedule";
+import { defaultValue, scheduleErrors, targetAttributes } from "@/lib/schedule-fields";
+import { useUnsavedChanges } from "@/lib/use-unsaved";
 
-interface Draft {
-  schedule: ParsedSchedule;
-  name: string;
-  description: string;
-  enabled: boolean;
-  once: boolean;
-  priority: number;
-  rateLimit: number;
-  id: string;
+type TriggerKind = "at" | "sun" | "state" | "every";
+function kindOf(trigger: Trigger): TriggerKind {
+  return trigger.kind === "at" && trigger.solar ? "sun" : trigger.kind;
 }
-
-function draftFor(rule: Rule | null): Draft {
-  if (!rule) {
-    return {
-      schedule: emptySchedule(),
-      name: "",
-      description: "",
-      enabled: true,
-      once: false,
-      priority: 0,
-      rateLimit: 1,
-      id: "",
-    };
-  }
-  const parsed = parseRule(rule);
+function initial(rule: Rule | null) {
+  const parsed = rule ? parseRule(rule) : null;
   return {
-    schedule: parsed.ok ? parsed.schedule : emptySchedule(),
-    name: rule.name ?? "",
-    description: rule.description ?? "",
-    enabled: rule.enabled,
-    once: rule.once,
-    priority: rule.priority,
-    rateLimit: rule.rate_limit ?? 1,
-    id: rule.id,
+    schedule: parsed?.ok ? parsed.schedule : { ...emptySchedule(), then: [clauseFor("device", "", "", "")] },
+    name: rule?.name ?? "",
+    description: rule?.description ?? "",
+    enabled: rule?.enabled ?? true,
+    once: rule?.once ?? false,
+    priority: String(rule?.priority ?? 0),
+    rateLimit: String(rule?.rate_limit ?? 1),
   };
-}
-
-function newRuleDoc(id: string): Rule {
-  return {
-    id,
-    enabled: true,
-    priority: 0,
-    once: false,
-    rate_limit: 1,
-    when: { at: "00:00", changed: false },
-    then: [{ set: { device: "", attr: "", value: "" } }],
-  } as Rule;
 }
 
 export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose: () => void }) {
-  const devices = useDevices().data ?? [];
-  const groups = useGroups().data ?? [];
+  const deviceQuery = useDevices();
+  const groupQuery = useGroups();
+  const rules = useRules();
+  const devices = deviceQuery.data ?? [];
+  const groups = groupQuery.data ?? [];
   const names = useNames();
   const save = useSaveRule();
-  const rawReasons = rule ? unrepresentable(rule) : [];
-  const [raw, setRaw] = useState(() => (rule ? JSON.stringify(rule, null, 2) : ""));
-  const [rawMode, setRawMode] = useState(rawReasons.length > 0);
-  const [draft, setDraft] = useState<Draft>(() => draftFor(rule));
-
-  const writable = useMemo(
-    () => devices.filter((device) => Object.values(device.attributes).some((attribute) => attribute.write)),
-    [devices],
+  const [draft, setDraft] = useState(() => initial(rule));
+  const original = useRef(JSON.stringify(initial(rule)));
+  const creationId = useRef<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
+  const [customDays, setCustomDays] = useState(
+    () => draft.schedule.when.kind === "at" && repeatFor(draft.schedule.when.days) === "custom",
   );
-
-  const problems = useMemo(() => validate(draft), [draft]);
-  const description = useMemo(() => describeSchedule(draft.schedule, names), [draft.schedule, names]);
-  const suggestedName = description.sentence;
-
-  const update = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }));
-  const updateTrigger = (trigger: Trigger) => update({ schedule: { ...draft.schedule, when: trigger } });
-  const updateClause = (index: number, patch: Partial<Clause>) =>
-    update({
-      schedule: {
-        ...draft.schedule,
-        then: draft.schedule.then.map((clause, position) =>
-          position === index ? { ...clause, ...patch } : clause,
-        ),
-      },
-    });
-
-  const saveRaw = () => {
-    try {
-      const document = JSON.parse(raw) as Rule;
-      save.mutate(document, { onSuccess: onClose });
-    } catch (error) {
-      problems.push(`Invalid JSON: ${(error as Error).message}`);
-    }
+  const originalCustomDays = useRef(customDays);
+  const dirty = JSON.stringify(draft) !== original.current || customDays !== originalCustomDays.current;
+  const [actionIds, setActionIds] = useState(() => draft.schedule.then.map(() => crypto.randomUUID()));
+  const [conditionIds, setConditionIds] = useState(
+    () => draft.schedule.onlyIf?.terms.map(() => crypto.randomUUID()) ?? [],
+  );
+  const triggerDrafts = useRef<Partial<Record<TriggerKind, Trigger>>>({});
+  const formRef = useRef<HTMLDivElement>(null);
+  const reasons = rule ? unrepresentable(rule) : [];
+  const errors = scheduleErrors(draft.schedule, devices, groups, customDays);
+  if (!Number.isInteger(Number(draft.priority)) || draft.priority === "")
+    errors.priority = "Enter a whole-number priority.";
+  if (draft.rateLimit === "" || !Number.isFinite(Number(draft.rateLimit)) || Number(draft.rateLimit) < 0)
+    errors.rate = "Enter a minimum interval of zero or more seconds.";
+  const description = describeSchedule(draft.schedule, names).sentence;
+  const update = (patch: Partial<typeof draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const schedule = (patch: Partial<typeof draft.schedule>) =>
+    update({ schedule: { ...draft.schedule, ...patch } });
+  const trigger = (when: Trigger) => schedule({ when });
+  const closeAllowed = () =>
+    !save.isPending && (!dirty || window.confirm("Discard unsaved schedule changes?"));
+  const close = () => {
+    if (closeAllowed()) onClose();
   };
-
+  useUnsavedChanges(dirty && !save.isSuccess);
   const submit = () => {
-    if (rawMode) return saveRaw();
-    const id = draft.id || slugify(draft.name || suggestedName);
-    const base = rule ?? newRuleDoc(id);
-    const document = applySchedule(base, draft.schedule, {
-      id,
-      name: draft.name || suggestedName,
-      description: draft.description || undefined,
-      enabled: draft.enabled,
-      once: draft.once,
-      priority: draft.priority,
-      rate_limit: draft.rateLimit,
-    } as Partial<Rule>);
-    save.mutate(document, { onSuccess: onClose });
+    if (save.isPending) return;
+    setAttempted(true);
+    if (Object.keys(errors).length) {
+      const key = Object.keys(errors)[0];
+      requestAnimationFrame(() => {
+        const area = formRef.current?.querySelector<HTMLElement>(`[data-field="${key}"]`);
+        area?.scrollIntoView({ block: "center" });
+        area?.querySelector<HTMLElement>("md-outlined-text-field, md-outlined-select, button")?.focus();
+      });
+      return;
+    }
+    // PUT is an upsert. A random suffix avoids overwriting a same-named schedule.
+    if (!rule && !creationId.current) {
+      let candidate = `${slugify(draft.name || description)}-${crypto.randomUUID()}`;
+      while (rules.data?.some((r) => r.id === candidate))
+        candidate = `${slugify(draft.name || description)}-${crypto.randomUUID()}`;
+      creationId.current = candidate;
+    }
+    // Retrying a request with a lost response must address the same document.
+    const id = rule?.id ?? creationId.current!;
+    const base =
+      rule ??
+      ({
+        id,
+        enabled: true,
+        priority: 0,
+        once: false,
+        rate_limit: 1,
+        when: { at: "23:30" },
+        then: [],
+      } as Rule);
+    save.mutate(
+      applySchedule(base, draft.schedule, {
+        id,
+        name: draft.name || description,
+        description: draft.description || undefined,
+        enabled: draft.enabled,
+        once: draft.once,
+        priority: Number(draft.priority),
+        rate_limit: Number(draft.rateLimit),
+      }),
+      { onSuccess: onClose },
+    );
   };
-
+  const problem = (key: string) =>
+    attempted && errors[key] ? (
+      <p role="alert" className="form-error field-error">
+        {errors[key]}
+      </p>
+    ) : null;
+  const updateClause = (i: number, patch: Partial<Clause>) =>
+    schedule({ then: draft.schedule.then.map((c, n) => (n === i ? { ...c, ...patch } : c)) });
+  const terms = draft.schedule.onlyIf?.terms ?? [];
+  const setTerms = (next: Term[]) => schedule({ onlyIf: next.length ? { terms: next } : null });
+  const addCondition = () => {
+    setConditionIds([...conditionIds, crypto.randomUUID()]);
+    setTerms([...terms, { attr: ["", ""], op: "eq", value: "" }]);
+  };
+  const nonDefault = Boolean(
+    draft.name ||
+      draft.description ||
+      !draft.enabled ||
+      draft.once ||
+      Number(draft.priority) ||
+      Number(draft.rateLimit) !== 1 ||
+      draft.schedule.hold,
+  );
   return (
     <Dialog
       wide
-      title={rule ? `Edit: ${rule.name ?? rule.id}` : "New Schedule"}
+      title={rule ? `Edit: ${rule.name ?? rule.id}` : "New schedule"}
       onClose={onClose}
+      beforeClose={closeAllowed}
       footer={
         <>
-          {problems.length > 0 ? (
-            <span style={{ color: "var(--md-sys-color-error)", fontSize: "13px", marginRight: "auto" }}>
-              {problems[0]}
-            </span>
-          ) : null}
-          <Button variant="text" onClick={onClose}>
+          <Button variant="text" disabled={save.isPending} onClick={close}>
             Cancel
           </Button>
-          <Button
-            variant="filled"
-            onClick={submit}
-            disabled={save.isPending || (!rawMode && problems.length > 0)}
-          >
-            Save Schedule
-          </Button>
+          {!reasons.length && (
+            <Button
+              disabled={
+                save.isPending ||
+                deviceQuery.isPending ||
+                groupQuery.isPending ||
+                rules.isPending ||
+                deviceQuery.isError ||
+                groupQuery.isError ||
+                rules.isError
+              }
+              onClick={submit}
+            >
+              {save.isPending ? "Saving…" : rule ? "Save changes" : "Create schedule"}
+            </Button>
+          )}
         </>
       }
     >
-      {rawReasons.length > 0 ? (
-        <Badge tone="warn">This schedule contains advanced rules ({rawReasons.join(", ")}) — editing raw JSON.</Badge>
-      ) : null}
-
-      {!rawMode ? (
-        <Stack gap={16}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              padding: "12px 16px",
-              borderRadius: "12px",
-              backgroundColor: "var(--md-sys-color-primary-container)",
-              color: "var(--md-sys-color-on-primary-container)",
-              fontWeight: 600,
-              fontSize: "15px",
-            }}
+      {reasons.length ? (
+        <Stack>
+          <p>This schedule uses {reasons.join(", ")}.</p>
+          <Link
+            className="text-link"
+            to={`/advanced?tab=schedules&rule=${encodeURIComponent(rule?.id ?? "")}`}
           >
-            <Icon name="auto_awesome" />
-            <span>{description.sentence}</span>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              padding: "16px",
-              borderRadius: "12px",
-              backgroundColor: "var(--md-sys-color-surface-container)",
-              border: "1px solid var(--md-sys-color-outline-variant)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Icon name="alarm" />
-              <strong>When (Trigger)</strong>
-            </div>
-
-            <Row gap={8} wrap>
-              {(
-                [
-                  ["at", "Clock Time", "schedule"],
-                  ["sun", "Solar Position", "wb_sunny"],
-                  ["state", "Device Reading", "sensors"],
-                  ["every", "Interval", "repeat"],
-                ] as const
-              ).map(([key, label, iconName]) => (
-                <Chip
-                  key={key}
-                  active={kindOfTrigger(draft.schedule.when) === key}
-                  onClick={() => updateTrigger(switchTrigger(draft.schedule.when, key))}
-                  icon={iconName}
-                >
-                  {label}
-                </Chip>
-              ))}
-            </Row>
-
-            <TriggerFields
-              trigger={draft.schedule.when}
-              onChange={updateTrigger}
-              devices={devices}
-              names={names}
-            />
-
-            <Row gap={12} wrap>
-              <Switch checked={draft.once} onChange={(next) => update({ once: next })} label="One-shot schedule" />
-              <span>One-shot: delete schedule immediately after it fires</span>
-            </Row>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              padding: "16px",
-              borderRadius: "12px",
-              backgroundColor: "var(--md-sys-color-surface-container)",
-              border: "1px solid var(--md-sys-color-outline-variant)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Icon name="bolt" />
-                <strong>Do (Action)</strong>
-              </div>
-              <Button
-                size="small"
-                variant="tonal"
-                icon="add"
-                onClick={() =>
-                  update({
-                    schedule: {
-                      ...draft.schedule,
-                      then: [
-                        ...draft.schedule.then,
-                        clauseFor(
-                          "device",
-                          writable[0]?.id ?? "",
-                          firstControllable(writable[0]),
-                          0 as Scalar,
-                        ),
-                      ],
-                    },
-                  })
-                }
-              >
-                Add action
-              </Button>
-            </div>
-
-            {draft.schedule.then.map((clause, index) => (
-              <div
-                key={`${clause.target.id}-${clause.attr}-${index}`}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "8px",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  backgroundColor: "var(--md-sys-color-surface-container-high)",
-                  border: "1px solid var(--md-sys-color-outline-variant)",
+            Edit advanced configuration
+          </Link>
+        </Stack>
+      ) : (
+        <div ref={formRef} className="form-section">
+          {(deviceQuery.isError || groupQuery.isError || rules.isError) && (
+            <p role="alert" className="form-error">
+              Could not load devices or schedules.{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  deviceQuery.refetch();
+                  groupQuery.refetch();
+                  rules.refetch();
                 }}
               >
-                <ClauseFields
-                  clause={clause}
-                  devices={devices}
-                  groups={groups}
-                  names={names}
-                  onChange={(patch) => updateClause(index, patch)}
-                />
-                {draft.schedule.then.length > 1 ? (
-                  <Row justify="flex-end">
-                    <Button
-                      size="small"
-                      variant="danger"
-                      icon="delete"
-                      onClick={() =>
-                        update({
-                          schedule: {
-                            ...draft.schedule,
-                            then: draft.schedule.then.filter((_item, position) => position !== index),
-                          },
-                        })
+                Retry
+              </button>
+            </p>
+          )}
+          <section className="form-section" data-field="trigger">
+            <h2>When</h2>
+            <Select
+              label="Trigger"
+              value={kindOf(draft.schedule.when)}
+              onChange={(value) => {
+                const kind = value as TriggerKind;
+                triggerDrafts.current[kindOf(draft.schedule.when)] = draft.schedule.when;
+                const next =
+                  triggerDrafts.current[kind] ??
+                  (kind === "at" || kind === "sun"
+                    ? {
+                        kind: "at",
+                        at: kind === "sun" ? "sunset" : "23:30",
+                        solar: kind === "sun",
+                        days: [],
+                        offset: null,
                       }
+                    : kind === "state"
+                      ? { kind: "state", device: "", attr: "", changed: true }
+                      : { kind: "every", every: "15m" });
+                setCustomDays(next.kind === "at" && repeatFor(next.days) === "custom");
+                trigger(next);
+              }}
+              options={[
+                { value: "at", label: "Time" },
+                { value: "sun", label: "Sunrise / sunset" },
+                { value: "state", label: "Device update" },
+                { value: "every", label: "Interval" },
+              ]}
+            />
+            {draft.schedule.when.kind === "at" ? (
+              <>
+                {draft.schedule.when.solar ? (
+                  <>
+                    <Select
+                      label="Solar event"
+                      value={draft.schedule.when.at}
+                      onChange={(at) => {
+                        if (draft.schedule.when.kind === "at") trigger({ ...draft.schedule.when, at });
+                      }}
+                      options={[
+                        "sunrise",
+                        "sunset",
+                        ...SOLAR_EVENTS.filter((e) => e !== "sunrise" && e !== "sunset"),
+                      ].map((e) => ({ value: e, label: e[0].toUpperCase() + e.slice(1) }))}
+                    />
+                    <SolarOffset
+                      value={draft.schedule.when.offset}
+                      onChange={(offset) => {
+                        if (draft.schedule.when.kind === "at") trigger({ ...draft.schedule.when, offset });
+                      }}
+                    />
+                    {problem("offset")}
+                  </>
+                ) : (
+                  <TextField
+                    label="Time"
+                    type="time"
+                    value={draft.schedule.when.at}
+                    onChange={(at) => {
+                      if (draft.schedule.when.kind === "at") trigger({ ...draft.schedule.when, at });
+                    }}
+                  />
+                )}
+                <div data-field="repeat">
+                  <Repeat
+                    days={draft.schedule.when.days}
+                    custom={customDays}
+                    onChange={(days, custom) => {
+                      setCustomDays(custom);
+                      if (draft.schedule.when.kind === "at") trigger({ ...draft.schedule.when, days });
+                    }}
+                  />
+                  {problem("repeat")}
+                </div>
+              </>
+            ) : draft.schedule.when.kind === "every" ? (
+              <DurationField
+                label="Interval"
+                value={draft.schedule.when.every}
+                onChange={(every) => trigger({ kind: "every", every })}
+              />
+            ) : (
+              <>
+                <DeviceReading
+                  devices={devices}
+                  device={draft.schedule.when.device}
+                  attr={draft.schedule.when.attr}
+                  onChange={(device, attr) => {
+                    if (draft.schedule.when.kind === "state")
+                      trigger({ ...draft.schedule.when, device, attr });
+                  }}
+                />
+                <details>
+                  <summary>Device update options</summary>
+                  <Toggle
+                    label="Also trigger when the same value is reported"
+                    checked={!draft.schedule.when.changed}
+                    onChange={(same) => {
+                      if (draft.schedule.when.kind === "state")
+                        trigger({ ...draft.schedule.when, changed: !same });
+                    }}
+                  />
+                  <Muted>Conditions below decide whether an update should run the actions.</Muted>
+                </details>
+              </>
+            )}
+            {problem("trigger")}
+          </section>
+          <section className="form-section">
+            <h2>Action</h2>
+            {draft.schedule.then.map((c, i) => {
+              const attrs = targetAttributes(c.target, devices, groups);
+              return (
+                <div className="form-section" key={actionIds[i]} data-field={`action-${i}`}>
+                  <Select
+                    label="Device or group"
+                    value={c.target.id ? `${c.target.kind}:${c.target.id}` : ""}
+                    onChange={(value) => {
+                      const split = value.indexOf(":");
+                      const target = {
+                        kind: value.slice(0, split) as "device" | "group",
+                        id: value.slice(split + 1),
+                      };
+                      const available = targetAttributes(target, devices, groups);
+                      const attr = Object.keys(available).length === 1 ? Object.keys(available)[0] : "";
+                      updateClause(i, { target, attr, value: defaultValue(available[attr]) });
+                    }}
+                    options={[
+                      { value: "", label: "Choose a device or group" },
+                      ...devices
+                        .filter((d) => !d.locked && Object.values(d.attributes).some((s) => s.write))
+                        .map((d) => ({ value: `device:${d.id}`, label: names.device(d.id) })),
+                      ...groups.map((g) => ({
+                        value: `group:${g.id}`,
+                        label: `${g.name ?? g.id} (${g.members.length} devices)`,
+                      })),
+                    ]}
+                  />
+                  <div className="form-grid">
+                    <Select
+                      label="Control"
+                      disabled={!c.target.id || !Object.keys(attrs).length}
+                      value={c.attr}
+                      onChange={(attr) => updateClause(i, { attr, value: defaultValue(attrs[attr]) })}
+                      options={[
+                        { value: "", label: "Choose a control" },
+                        ...Object.keys(attrs).map((a) => ({ value: a, label: attrLabel(a) })),
+                      ]}
+                    />
+                    <ValueField
+                      spec={attrs[c.attr]}
+                      value={c.value}
+                      onChange={(value) => updateClause(i, { value })}
+                    />
+                  </div>
+                  {c.target.id && !Object.keys(attrs).length && (
+                    <Muted>
+                      This target has no compatible writable controls. Group members must share a type,
+                      values, and numeric range.
+                    </Muted>
+                  )}
+                  {problem(`action-${i}`)}
+                  <details open={Boolean(c.revertAfter) || undefined}>
+                    <summary>Restore previous value after…</summary>
+                    <DurationField
+                      label="Restore after"
+                      optional
+                      value={c.revertAfter ?? ""}
+                      onChange={(v) => updateClause(i, { revertAfter: v || null })}
+                    />
+                    <Muted>Without a restore duration, the value stays until changed again.</Muted>
+                  </details>
+                  {draft.schedule.then.length > 1 && (
+                    <Button
+                      variant="text"
+                      onClick={() => {
+                        setActionIds(actionIds.filter((_, n) => n !== i));
+                        schedule({ then: draft.schedule.then.filter((_, n) => n !== i) });
+                      }}
                     >
                       Remove action
                     </Button>
-                  </Row>
-                ) : null}
-              </div>
-            ))}
-
-            {draft.schedule.onlyIf ? (
-              <ConditionFields
-                terms={draft.schedule.onlyIf.terms}
-                devices={devices}
-                names={names}
-                onChange={(terms) => update({ schedule: { ...draft.schedule, onlyIf: { terms } } })}
-              />
-            ) : (
-              <Row gap={8}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  icon="filter_alt"
-                  onClick={() =>
-                    update({ schedule: { ...draft.schedule, onlyIf: { terms: [defaultTerm(devices)] } } })
-                  }
-                >
-                  Add condition (Only if…)
-                </Button>
-                <Muted>Condition must be satisfied for the action to execute</Muted>
-              </Row>
-            )}
-
-            <Row gap={8} wrap>
-              <Select
-                label="Condition hold duration"
-                value={draft.schedule.hold ?? ""}
-                onChange={(value) => update({ schedule: { ...draft.schedule, hold: value || null } })}
-                options={[
-                  { value: "", label: "Immediately" },
-                  ...DURATION_CHOICES.map((value) => ({ value, label: durationWords(value) })),
-                ]}
-              />
-              <Muted>Wait for condition to continuously hold before executing</Muted>
-            </Row>
-          </div>
-        </Stack>
-      ) : null}
-
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-          padding: "16px",
-          borderRadius: "12px",
-          backgroundColor: "var(--md-sys-color-surface-container)",
-          border: "1px solid var(--md-sys-color-outline-variant)",
-          marginTop: "16px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <Icon name="tune" />
-          <strong>Configuration & Metadata</strong>
-        </div>
-
-        <TextField
-          label="Schedule Name"
-          value={draft.name}
-          onChange={(value) => update({ name: value })}
-          placeholder={suggestedName}
-        />
-        <TextField
-          label="Notes & Description"
-          value={draft.description}
-          onChange={(value) => update({ description: value })}
-        />
-
-        <Row gap={12} wrap>
-          <Switch checked={draft.enabled} onChange={(next) => update({ enabled: next })} label="Enabled" />
-          <span>Enable schedule</span>
-          <Muted>ID: {draft.id || slugify(draft.name || suggestedName)}</Muted>
-        </Row>
-
-        <Row gap={8}>
-          <Button size="small" variant="text" onClick={() => setRawMode(!rawMode)}>
-            {rawMode ? "Return to visual builder" : "Switch to raw JSON editor"}
+                  )}
+                </div>
+              );
+            })}
+            {problem("actions")}
+            <Button
+              variant="text"
+              icon="add"
+              onClick={() => {
+                setActionIds([...actionIds, crypto.randomUUID()]);
+                schedule({ then: [...draft.schedule.then, clauseFor("device", "", "", "")] });
+              }}
+            >
+              Add another action
+            </Button>
+          </section>
+          {terms.length ? (
+            <section className="form-section">
+              <h2>Only if all conditions are true</h2>
+              {terms.map((t, i) => {
+                const spec = devices.find((d) => d.id === t.attr[0])?.attributes[t.attr[1]];
+                const patch = (p: Partial<Term>) =>
+                  setTerms(terms.map((v, n) => (n === i ? { ...v, ...p } : v)));
+                return (
+                  <div className="form-section" key={conditionIds[i]} data-field={`condition-${i}`}>
+                    <DeviceReading
+                      devices={devices}
+                      device={t.attr[0]}
+                      attr={t.attr[1]}
+                      onChange={(device, attr) =>
+                        patch({
+                          attr: [device, attr],
+                          op: "eq",
+                          value: defaultValue(devices.find((d) => d.id === device)?.attributes[attr]),
+                        })
+                      }
+                    />
+                    <div className="form-grid">
+                      <Select
+                        label="Comparison"
+                        value={t.op}
+                        disabled={!spec}
+                        onChange={(op) => patch({ op: op as Term["op"] })}
+                        options={[
+                          { value: "eq", label: "is" },
+                          { value: "ne", label: "is not" },
+                          ...(spec?.type === "number" && !spec.enum?.length
+                            ? [
+                                { value: "gt", label: "is above" },
+                                { value: "ge", label: "is at least" },
+                                { value: "lt", label: "is below" },
+                                { value: "le", label: "is at most" },
+                              ]
+                            : []),
+                        ]}
+                      />
+                      <ValueField
+                        label="Compare with"
+                        spec={spec}
+                        value={t.value as Scalar}
+                        onChange={(value) => patch({ value })}
+                      />
+                    </div>
+                    {problem(`condition-${i}`)}
+                    <Button
+                      variant="text"
+                      onClick={() => {
+                        setConditionIds(conditionIds.filter((_, n) => n !== i));
+                        setTerms(terms.filter((_, n) => n !== i));
+                      }}
+                    >
+                      Remove condition
+                    </Button>
+                  </div>
+                );
+              })}
+              <Delay value={draft.schedule.hold} onChange={(hold) => schedule({ hold })} />
+              {problem("hold")}
+            </section>
+          ) : null}
+          <Button variant="text" icon="add" onClick={addCondition}>
+            Add condition
           </Button>
-        </Row>
-
-        {rawMode ? (
-          <textarea
-            value={raw}
-            onChange={(event) => setRaw(event.target.value)}
-            rows={18}
-            style={{
-              fontFamily: "Roboto Mono, monospace",
-              fontSize: "13px",
-              padding: "12px",
-              borderRadius: "8px",
-              backgroundColor: "var(--md-sys-color-surface-container-lowest)",
-              color: "var(--md-sys-color-on-surface)",
-              border: "1px solid var(--md-sys-color-outline-variant)",
-            }}
-          />
-        ) : (
-          <Row gap={12} wrap>
-            <TextField
-              label="Priority"
-              type="number"
-              value={String(draft.priority)}
-              onChange={(value) => update({ priority: Number(value) || 0 })}
-            />
-            <TextField
-              label="Rate Limit (seconds)"
-              type="number"
-              value={String(draft.rateLimit)}
-              onChange={(value) => update({ rateLimit: Number(value) || 0 })}
-            />
-          </Row>
-        )}
-      </div>
+          <details open={nonDefault || undefined}>
+            <summary>More options</summary>
+            <Stack gap={16}>
+              <TextField label="Name (optional)" value={draft.name} onChange={(name) => update({ name })} />
+              <TextField
+                label="Notes (optional)"
+                value={draft.description}
+                onChange={(description) => update({ description })}
+              />
+              <Toggle label="Enabled" checked={draft.enabled} onChange={(enabled) => update({ enabled })} />
+              <Toggle
+                label="Delete after first run"
+                checked={draft.once}
+                onChange={(once) => update({ once })}
+              />
+              <Muted>This deletes the schedule after it fires.</Muted>
+              <div className="form-grid">
+                <div data-field="priority">
+                  <TextField
+                    label="Priority"
+                    type="number"
+                    value={draft.priority}
+                    onChange={(priority) => update({ priority })}
+                  />
+                  {problem("priority")}
+                </div>
+                <div data-field="rate">
+                  <TextField
+                    label="Minimum interval between runs (seconds)"
+                    type="number"
+                    min={0}
+                    value={draft.rateLimit}
+                    onChange={(rateLimit) => update({ rateLimit })}
+                  />
+                  {problem("rate")}
+                </div>
+              </div>
+              {!terms.length && (
+                <div data-field="hold">
+                  <Delay value={draft.schedule.hold} onChange={(hold) => schedule({ hold })} />
+                  {problem("hold")}
+                </div>
+              )}
+            </Stack>
+          </details>
+          <Muted>
+            {draft.schedule.then.every((c) => c.target.id && c.attr)
+              ? description
+              : "Choose when to run, then a device or group and what to change."}
+          </Muted>
+          {save.error && (
+            <p className="form-error" role="alert">
+              Could not save: {save.error.message}
+            </p>
+          )}
+        </div>
+      )}
     </Dialog>
   );
 }
 
-function kindOfTrigger(trigger: Trigger): "at" | "sun" | "state" | "every" {
-  if (trigger.kind === "at") return trigger.solar ? "sun" : "at";
-  return trigger.kind;
-}
-
-function switchTrigger(current: Trigger, kind: "at" | "sun" | "state" | "every"): Trigger {
-  if (kind === "at" && current.kind === "at" && !current.solar) return current;
-  if (kind === "sun" && current.kind === "at" && current.solar) return current;
-  if (kind === "state" && current.kind === "state") return current;
-  if (kind === "every" && current.kind === "every") return current;
-  switch (kind) {
-    case "at":
-      return { kind: "at", at: "23:30", solar: false, days: [], offset: null };
-    case "sun":
-      return { kind: "at", at: "dusk", solar: true, days: [], offset: null };
-    case "state":
-      return { kind: "state", device: "", attr: "", changed: true };
-    default:
-      return { kind: "every", every: "15m" };
-  }
-}
-
-function TriggerFields({
-  trigger,
-  onChange,
-  devices,
-  names,
-}: {
-  trigger: Trigger;
-  onChange: (next: Trigger) => void;
-  devices: Device[];
-  names: ReturnType<typeof useNames>;
-}) {
-  if (trigger.kind === "at") {
-    return (
-      <Stack gap={12}>
-        <Row gap={8} wrap>
-          {trigger.solar ? (
-            <Select
-              label="Solar event"
-              value={trigger.at}
-              onChange={(value) => onChange({ ...trigger, at: value })}
-              options={SOLAR_EVENTS.map((event) => ({ value: event, label: event }))}
-            />
-          ) : (
-            <TextField
-              label="At time"
-              type="time"
-              value={trigger.at}
-              onChange={(value) => onChange({ ...trigger, at: value })}
-            />
-          )}
-          {trigger.solar ? (
-            <TextField
-              label="Offset (± 30m)"
-              value={trigger.offset ?? ""}
-              onChange={(value) => onChange({ ...trigger, offset: value || null })}
-              placeholder="-30m"
-            />
-          ) : null}
-        </Row>
-        {!trigger.solar ? (
-          <Row gap={4} wrap>
-            <Label>Days of week</Label>
-            {DAYS.map((day) => (
-              <Chip
-                key={day}
-                active={trigger.days.includes(day)}
-                onClick={() =>
-                  onChange({
-                    ...trigger,
-                    days: trigger.days.includes(day)
-                      ? trigger.days.filter((item) => item !== day)
-                      : [...trigger.days, day],
-                  })
-                }
-              >
-                {day}
-              </Chip>
-            ))}
-            <Button size="small" variant="text" onClick={() => onChange({ ...trigger, days: [] })}>
-              Every day
-            </Button>
-          </Row>
-        ) : null}
-        {trigger.solar ? (
-          <Muted>Calculated dynamically by the server based on solar ephemeris.</Muted>
-        ) : null}
-      </Stack>
-    );
-  }
-
-  if (trigger.kind === "state") {
-    const device = devices.find((item) => item.id === trigger.device);
-    return (
-      <Stack gap={12}>
-        <Row gap={8} wrap>
-          <Select
-            label="Device"
-            value={trigger.device}
-            onChange={(value) => {
-              const next = devices.find((item) => item.id === value);
-              onChange({ ...trigger, device: value, attr: next ? Object.keys(next.attributes)[0] : "" });
-            }}
-            options={[
-              { value: "", label: "Choose device…" },
-              ...devices.map((item) => ({ value: item.id, label: names.device(item.id) })),
-            ]}
-          />
-          <Select
-            label="Attribute"
-            value={trigger.attr}
-            onChange={(value) => onChange({ ...trigger, attr: value })}
-            options={[
-              { value: "", label: "Choose attribute…" },
-              ...Object.keys(device?.attributes ?? {}).map((attr) => ({
-                value: attr,
-                label: attrLabel(attr),
-              })),
-            ]}
-          />
-        </Row>
-        <Row gap={8} wrap>
-          <Chip active={trigger.changed} onClick={() => onChange({ ...trigger, changed: true })}>
-            Only on value change
-          </Chip>
-          <Chip active={!trigger.changed} onClick={() => onChange({ ...trigger, changed: false })}>
-            Every telemetry report
-          </Chip>
-        </Row>
-      </Stack>
-    );
-  }
-
-  return (
-    <Row gap={8} wrap>
-      <TextField
-        label="Interval"
-        value={trigger.every}
-        onChange={(value) => onChange({ ...trigger, every: value })}
-      />
-      <Row gap={4}>
-        {DURATION_CHOICES.slice(0, 5).map((choice) => (
-          <Chip
-            key={choice}
-            active={trigger.every === choice}
-            onClick={() => onChange({ ...trigger, every: choice })}
-          >
-            {choice}
-          </Chip>
-        ))}
-      </Row>
-    </Row>
-  );
-}
-
-function ClauseFields({
-  clause,
-  devices,
-  groups,
-  names,
-  onChange,
-}: {
-  clause: Clause;
-  devices: Device[];
-  groups: Group[];
-  names: ReturnType<typeof useNames>;
-  onChange: (patch: Partial<Clause>) => void;
-}) {
-  const device = devices.find((item) => item.id === clause.target.id);
-  const attribute: Attribute | undefined = device?.attributes[clause.attr];
-  const group = clause.target.kind === "group";
-  const attributes = group
-    ? commonAttributes(devices, groups.find((item) => item.id === clause.target.id)?.members ?? [])
-    : Object.entries(device?.attributes ?? {})
-        .filter(([, spec]) => spec.write)
-        .map(([name]) => name);
-
-  return (
-    <Stack gap={8}>
-      <Row gap={8} wrap>
-        <Select
-          label="Target"
-          value={`${clause.target.kind}:${clause.target.id}`}
-          onChange={(value) => {
-            const [kind, id] = value.split(":");
-            onChange({ target: { kind: kind as "device" | "group", id }, attr: "" });
-          }}
-          options={[
-            { value: ":", label: "Choose target…" },
-            ...devices
-              .filter((item) => Object.values(item.attributes).some((spec) => spec.write))
-              .map((item) => ({ value: `device:${item.id}`, label: names.device(item.id) })),
-            ...groups.map((item) => ({ value: `group:${item.id}`, label: `All of ${item.name ?? item.id}` })),
-          ]}
-        />
-        <Select
-          label="Attribute"
-          value={clause.attr}
-          onChange={(value) => {
-            const spec = device?.attributes[value];
-            onChange({ attr: value, value: defaultValue(spec) });
-          }}
-          options={[
-            { value: "", label: "Choose attribute…" },
-            ...attributes.map((attr) => ({ value: attr, label: attrLabel(attr) })),
-          ]}
-        />
-        <ValueWidget spec={attribute} value={clause.value} onChange={(value) => onChange({ value })} />
-        <Select
-          label="Revert after duration"
-          value={clause.revertAfter ?? ""}
-          onChange={(value) => onChange({ revertAfter: value || null })}
-          options={[
-            { value: "", label: "Permanent" },
-            ...HOLD_CHOICES.map((value) => ({ value, label: `Revert in ${durationWords(value)}` })),
-          ]}
-        />
-      </Row>
-    </Stack>
-  );
-}
-
-function ValueWidget({
+export function ValueField({
   spec,
   value,
   onChange,
+  label = "Set to",
 }: {
-  spec: Attribute | undefined;
+  spec?: Attribute;
   value: Scalar;
-  onChange: (next: Scalar) => void;
+  onChange: (v: Scalar) => void;
+  label?: string;
 }) {
-  if (!spec) return <Muted>Choose an attribute first</Muted>;
-  if (spec.type === "boolean") {
-    return (
-      <Row gap={8}>
-        <Label>Value</Label>
-        <Switch checked={value === true} onChange={(next) => onChange(next)} label="Value" />
-      </Row>
-    );
-  }
-  if (spec.enum?.length === 2 && spec.enum.includes("ON") && spec.enum.includes("OFF")) {
-    return (
-      <Row gap={4}>
-        <Label>Value</Label>
-        <Chip active={value === "ON"} onClick={() => onChange("ON")}>
-          ON
-        </Chip>
-        <Chip active={value === "OFF"} onClick={() => onChange("OFF")}>
-          OFF
-        </Chip>
-      </Row>
-    );
-  }
-  if (spec.enum?.length) {
+  if (spec?.enum?.length || spec?.type === "boolean") {
+    const options = spec.enum?.length ? spec.enum : [true, false];
     return (
       <Select
-        label="Value"
+        label={label}
         value={String(value)}
-        onChange={(next) =>
-          onChange((spec.enum?.find((option) => String(option) === next) ?? next) as Scalar)
-        }
-        options={spec.enum.map((option) => ({ value: String(option), label: String(option) }))}
+        onChange={(v) => onChange(options.find((o) => String(o) === v) as Scalar)}
+        options={options.map((o) => ({
+          value: String(o),
+          label: o === true || o === "ON" ? "On" : o === false || o === "OFF" ? "Off" : String(o),
+        }))}
       />
     );
   }
-  if (spec.type === "number") {
-    return (
-      <TextField
-        label={`Target value${spec.unit ? ` (${spec.unit})` : ""}`}
-        type="number"
-        value={String(value)}
-        min={spec.limits?.[0]}
-        max={spec.limits?.[1]}
-        step={0.5}
-        onChange={(next) => onChange(Number(next))}
-      />
-    );
-  }
-  return <TextField label="Value" value={String(value)} onChange={(next) => onChange(next)} />;
+  return (
+    <TextField
+      label={`${label}${spec?.unit ? ` (${spec.unit})` : ""}`}
+      disabled={!spec}
+      type={spec?.type === "number" ? "number" : "text"}
+      value={String(value)}
+      min={spec?.limits?.[0]}
+      max={spec?.limits?.[1]}
+      step={typeof spec?.step === "number" ? spec.step : undefined}
+      onChange={(v) => onChange(spec?.type === "number" && v !== "" ? Number(v) : v)}
+    />
+  );
 }
-
-function ConditionFields({
-  terms,
+function DeviceReading({
   devices,
-  names,
+  device,
+  attr,
   onChange,
 }: {
-  terms: Term[];
   devices: Device[];
-  names: ReturnType<typeof useNames>;
-  onChange: (terms: Term[]) => void;
+  device: string;
+  attr: string;
+  onChange: (device: string, attr: string) => void;
+}) {
+  const names = useNames();
+  const attrs = Object.keys(devices.find((d) => d.id === device)?.attributes ?? {});
+  return (
+    <div className="form-grid">
+      <Select
+        label="Device"
+        value={device}
+        onChange={(d) => {
+          const keys = Object.keys(devices.find((item) => item.id === d)?.attributes ?? {});
+          onChange(d, keys.length === 1 ? keys[0] : "");
+        }}
+        options={[
+          { value: "", label: "Choose a device" },
+          ...devices.map((d) => ({ value: d.id, label: names.device(d.id) })),
+        ]}
+      />
+      <Select
+        label="Reading"
+        value={attr}
+        disabled={!device}
+        onChange={(a) => onChange(device, a)}
+        options={[
+          { value: "", label: "Choose a reading" },
+          ...attrs.map((a) => ({ value: a, label: attrLabel(a) })),
+        ]}
+      />
+    </div>
+  );
+}
+function repeatFor(days: string[]): string {
+  const same = (values: string[]) => values.length === days.length && values.every((v) => days.includes(v));
+  return !days.length || days.length === 7
+    ? "daily"
+    : same(DAYS.slice(0, 5))
+      ? "weekdays"
+      : same(DAYS.slice(5))
+        ? "weekends"
+        : "custom";
+}
+function Repeat({
+  days,
+  custom,
+  onChange,
+}: {
+  days: string[];
+  custom: boolean;
+  onChange: (days: string[], custom: boolean) => void;
 }) {
   return (
-    <Stack gap={8}>
-      <Row justify="space-between">
-        <Label>Conditions (Only if)</Label>
-        <Button size="small" variant="text" icon="add" onClick={() => onChange([...terms, defaultTerm(devices)])}>
-          Add condition
-        </Button>
-      </Row>
-      {terms.map((term, index) => {
-        const [device, attr] = term.attr;
-        return (
-          <Row key={`${index}-${device}-${attr}`} gap={8} wrap>
-            <Select
-              value={device}
-              onChange={(value) => {
-                const next = devices.find((item) => item.id === value);
-                onChange(
-                  terms.map((item, position) =>
-                    position === index
-                      ? {
-                          ...item,
-                          attr: [value, Object.keys(next?.attributes ?? {})[0] ?? ""] as [string, string],
-                        }
-                      : item,
-                  ),
-                );
-              }}
-              options={[
-                { value: "", label: "Choose device…" },
-                ...devices.map((item) => ({ value: item.id, label: names.device(item.id) })),
-              ]}
-            />
-            <Select
-              value={attr}
-              onChange={(value) =>
-                onChange(
-                  terms.map((item, position) =>
-                    position === index ? { ...item, attr: [device, value] as [string, string] } : item,
-                  ),
-                )
-              }
-              options={Object.keys(devices.find((item) => item.id === device)?.attributes ?? {}).map(
-                (name) => ({ value: name, label: attrLabel(name) }),
-              )}
-            />
-            <Select
-              value={term.op}
-              onChange={(value) =>
-                onChange(
-                  terms.map((item, position) =>
-                    position === index ? { ...item, op: value as Term["op"] } : item,
-                  ),
-                )
-              }
-              options={[
-                { value: "eq", label: "is equal to" },
-                { value: "ne", label: "is not equal to" },
-                { value: "gt", label: "is greater than" },
-                { value: "ge", label: "is at least" },
-                { value: "lt", label: "is less than" },
-                { value: "le", label: "is at most" },
-              ]}
-            />
-            <TextField
-              value={String(term.value)}
-              onChange={(next) => {
-                const spec = devices.find((item) => item.id === device)?.attributes[attr];
-                const value: Scalar =
-                  spec?.type === "number" ? Number(next) : spec?.type === "boolean" ? next === "true" : next;
-                onChange(terms.map((item, position) => (position === index ? { ...item, value } : item)));
-              }}
-            />
-            <Button
-              size="small"
-              variant="danger"
-              icon="delete"
-              onClick={() => onChange(terms.filter((_item, position) => position !== index))}
-            >
-              Remove
-            </Button>
-          </Row>
-        );
-      })}
+    <Stack gap={12}>
+      <Select
+        label="Repeat"
+        value={custom ? "custom" : repeatFor(days)}
+        onChange={(v) =>
+          onChange(
+            v === "daily"
+              ? []
+              : v === "weekdays"
+                ? DAYS.slice(0, 5)
+                : v === "weekends"
+                  ? DAYS.slice(5)
+                  : days,
+            v === "custom",
+          )
+        }
+        options={[
+          { value: "daily", label: "Every day" },
+          { value: "weekdays", label: "Weekdays" },
+          { value: "weekends", label: "Weekends" },
+          { value: "custom", label: "Custom days" },
+        ]}
+      />
+      {custom && (
+        <>
+          <span>Days of the week</span>
+          <div className="weekdays" role="group" aria-label="Days of the week">
+            {DAYS.map((d, i) => (
+              <button
+                type="button"
+                key={d}
+                aria-label={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i]}
+                aria-pressed={days.includes(d)}
+                onClick={() => onChange(days.includes(d) ? days.filter((v) => v !== d) : [...days, d], true)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </Stack>
   );
 }
-
-function defaultTerm(devices: Device[]): Term {
-  const device = devices[0];
-  const attr = Object.keys(device?.attributes ?? {})[0] ?? "";
-  return { attr: [device?.id ?? "", attr], op: "eq", value: defaultValue(device?.attributes?.[attr]) };
+export function DurationField({
+  label,
+  value,
+  onChange,
+  optional = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  optional?: boolean;
+}) {
+  const parsed = /^(\d+(?:\.\d+)?)(s|m|h|d|w)$/.exec(value);
+  const [unit, setUnit] = useState(parsed?.[2] ?? "m");
+  if (value && !parsed)
+    return <TextField label={`${label} (duration, e.g. 30m)`} value={value} onChange={onChange} />;
+  return (
+    <div className="form-grid">
+      <TextField
+        label={optional ? `${label} (optional)` : label}
+        type="number"
+        min={0}
+        value={parsed?.[1] ?? ""}
+        onChange={(v) => onChange(v ? `${v}${parsed?.[2] ?? unit}` : "")}
+      />
+      <Select
+        label="Unit"
+        value={parsed?.[2] ?? unit}
+        onChange={(u) => {
+          setUnit(u);
+          if (parsed) onChange(`${parsed[1]}${u}`);
+        }}
+        options={[
+          { value: "s", label: "Seconds" },
+          { value: "m", label: "Minutes" },
+          { value: "h", label: "Hours" },
+          { value: "d", label: "Days" },
+          { value: "w", label: "Weeks" },
+        ]}
+      />
+    </div>
+  );
 }
-
-function defaultValue(spec: Attribute | undefined): Scalar {
-  if (!spec) return "";
-  if (spec.type === "boolean") return true;
-  if (spec.enum?.length) return spec.enum.includes("ON") ? "ON" : (spec.enum[0] as Scalar);
-  if (spec.type === "number") return 20;
-  return "";
+function SolarOffset({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const seconds = value === null ? null : durationSeconds(value);
+  const [direction, setDirection] = useState(
+    value === null ? "at" : seconds !== null && seconds < 0 ? "before" : "after",
+  );
+  const magnitude = value?.startsWith("invalid:")
+    ? value.slice(8)
+    : value && /^[+-]?\d+(?:\.\d+)?[smhdw]$/i.test(value)
+      ? value.replace(/^[+-]/, "")
+      : seconds !== null
+        ? `${Math.abs(seconds)}s`
+        : (value ?? "");
+  const offsetFor = (v: string, before: boolean) => {
+    const amount = durationSeconds(v);
+    if (!v) return "";
+    if (amount === null || amount < 0) return `invalid:${v}`;
+    return /^\d+(?:\.\d+)?[smhdw]$/i.test(v) ? `${before ? "-" : ""}${v}` : `${before ? -amount : amount}s`;
+  };
+  return (
+    <div className="form-section" data-field="offset">
+      <Select
+        label="Offset"
+        value={direction}
+        onChange={(d) => {
+          setDirection(d);
+          onChange(d === "at" ? null : offsetFor(magnitude || "30m", d === "before"));
+        }}
+        options={[
+          { value: "at", label: "At event" },
+          { value: "before", label: "Before" },
+          { value: "after", label: "After" },
+        ]}
+      />
+      {direction !== "at" && (
+        <DurationField
+          label="Offset amount"
+          value={magnitude}
+          onChange={(v) => onChange(offsetFor(v, direction === "before"))}
+        />
+      )}
+    </div>
+  );
 }
-
-function firstControllable(device: Device | undefined): string {
-  if (!device) return "";
-  return Object.entries(device.attributes).find(([, spec]) => spec.write)?.[0] ?? "";
-}
-
-function commonAttributes(devices: Device[], members: string[]): string[] {
-  const lists = members
-    .map((member) => devices.find((device) => device.id === member))
-    .filter((device): device is Device => Boolean(device))
-    .map((device) =>
-      Object.entries(device.attributes)
-        .filter(([, spec]) => spec.write)
-        .map(([name]) => name),
-    );
-  if (!lists.length) return [];
-  return lists.reduce((common, list) => common.filter((attr) => list.includes(attr)));
-}
-
-function validate(draft: Draft): string[] {
-  const problems: string[] = [];
-  if (!draft.name && !draft.schedule.when) problems.push("Please provide a name or trigger.");
-  if (draft.schedule.then.length === 0) problems.push("Please add at least one action.");
-  for (const clause of draft.schedule.then) {
-    if (!clause.target.id || !clause.attr) problems.push("Every action must specify a target device and attribute.");
-  }
-  return problems;
+function Delay({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  return (
+    <div className="form-section">
+      <DurationField
+        label="Delay before running"
+        optional
+        value={value ?? ""}
+        onChange={(v) => onChange(v || null)}
+      />
+      <Muted>Another trigger can restart this wait. Conditions are checked before actions run.</Muted>
+    </div>
+  );
 }

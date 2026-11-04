@@ -7,18 +7,20 @@
  * do not implement must fail loudly instead of reaching a real house through the dev proxy.
  */
 import { HttpResponse, http } from "msw";
+import type { Device } from "@/api/types";
 import devicesFixture from "./fixtures/devices.json";
 import eventsFixture from "./fixtures/events.json";
 import groupsFixture from "./fixtures/groups.json";
 import readyFixture from "./fixtures/readyz.json";
 import rulesFixture from "./fixtures/rules.json";
 import timersFixture from "./fixtures/timers.json";
+import { durationMs, type GatewayScenario, gatewayDevices, simulateGateway } from "./gateway";
 
 const base = String(import.meta.env.VITE_API_BASE ?? "/api-proxy");
 
 type Json = Record<string, unknown>;
 
-const devices = JSON.parse(JSON.stringify(devicesFixture)) as Json[];
+const devices = [...JSON.parse(JSON.stringify(devicesFixture)), ...structuredClone(gatewayDevices)] as Json[];
 const rules = JSON.parse(JSON.stringify(rulesFixture)) as Json[];
 const events = [...(eventsFixture as Json[])];
 const timers = JSON.parse(JSON.stringify(timersFixture)) as {
@@ -35,6 +37,8 @@ function deviceById(id: string): Json | undefined {
 }
 
 function applySet(device: Json, body: Json): Json[] {
+  if (device.command)
+    return simulateGateway(device as Device, body, record, device.mock_scenario as GatewayScenario);
   const state = (device.state ??= {}) as Json;
   const results: Json[] = [];
   for (const [attr, value] of Object.entries(body)) {
@@ -44,10 +48,12 @@ function applySet(device: Json, body: Json): Json[] {
     if (status === "applied") state[attr] = { value, ts: new Date().toISOString(), source: "manual" };
     const result = { device: device.id, attr, value, previous, status, rule: null, source: "manual" };
     if (status === "applied") {
+      timers.timers = timers.timers.filter(
+        (timer) => !(timer.kind === "revert" && timer.device === device.id && timer.attr === attr),
+      );
       record({ type: "write", ...result });
       if (typeof body.revert_after === "string") {
-        const hours = Number(/(\d+)/.exec(body.revert_after)?.[1] ?? 0);
-        const due = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+        const due = new Date(Date.now() + durationMs(body.revert_after)).toISOString();
         const timer = {
           id: `revert:${device.id}:${attr}`,
           kind: "revert",
@@ -86,6 +92,19 @@ export const handlers = [
   http.get(`${base}/api/v1/groups`, () => HttpResponse.json(groupsFixture)),
   http.get(`${base}/api/v1/rules`, () => HttpResponse.json(rules)),
   http.get(`${base}/api/v1/timers`, () => HttpResponse.json(timers)),
+  // Keep the stream open; polling supplies staged events in mock mode.
+  http.get(
+    `${base}/api/v1/events/stream`,
+    () =>
+      new HttpResponse(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(": mock stream\n\n"));
+          },
+        }),
+        { headers: { "Content-Type": "text/event-stream" } },
+      ),
+  ),
   http.get(`${base}/api/v1/events`, ({ request }) => {
     const url = new URL(request.url);
     const since = url.searchParams.get("since");

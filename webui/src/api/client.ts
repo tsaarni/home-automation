@@ -106,7 +106,7 @@ export const api = {
       kind?: string;
       category?: string;
       exclude_kinds?: string;
-    } = {}
+    } = {},
   ) => {
     const query = new URLSearchParams();
     if (params.since) query.set("since", params.since);

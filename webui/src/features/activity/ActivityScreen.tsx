@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { useEvents, useNames, useRules, useTime } from "@/api/queries";
 import { Badge, Button, Card, Empty, Muted, Row, Select, Stack, Toggle } from "@/components/primitives";
 import { StatusHeader } from "@/components/StatusHeader";
-import { UpcomingSection } from "@/features/home/HomeScreen";
 import {
   humanizeWords,
   isSwitchValue,
@@ -12,32 +11,54 @@ import {
   triggerSentence,
   writeSentence,
 } from "@/lib/reasons";
-import { buildRuns, type Run } from "@/lib/runs";
+import { buildRuns, latestWrites, type Run } from "@/lib/runs";
+import { clearSearch, matches, useSearchQuery } from "@/lib/search";
 
 export function ActivityScreen() {
-  const events = useEvents().data ?? [];
+  const eventsQuery = useEvents();
+  const events = eventsQuery.data ?? [];
+  const query = useSearchQuery();
   const rules = useRules().data ?? [];
-  const [ruleFilter, setRuleFilter] = useState("");
-  const [outcomeFilter, setOutcomeFilter] = useState("");
-  const [window, setWindow] = useState("24h");
-  const [showNoise, setShowNoise] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const ruleFilter = params.get("rule") ?? "";
+  const sourceFilter = params.get("source") ?? "";
+  const outcomeFilter = params.get("outcome") ?? "";
+  const window = params.get("window") ?? "24h";
+  const showNoise = params.get("telemetry") === "true";
+  const filter = (key: string, value: string) =>
+    setParams((p) => {
+      if (value) p.set(key, value);
+      else p.delete(key);
+      return p;
+    });
+  const setRuleFilter = (v: string) => filter("rule", v);
+  const setOutcomeFilter = (v: string) => filter("outcome", v);
+  const setWindow = (v: string) => filter("window", v);
+  const setShowNoise = (v: boolean) => filter("telemetry", String(v));
   const [open, setOpen] = useState<string | null>(null);
   const [displayLimit, setDisplayLimit] = useState(100);
 
+  useEffect(() => {
+    setDisplayLimit(100);
+  }, [ruleFilter, outcomeFilter, window, showNoise, query, sourceFilter]);
   const allRuns = useMemo(() => buildRuns(events), [events]);
 
   const runs = useMemo(() => {
     const hours = window === "1h" ? 1 : window === "6h" ? 6 : window === "24h" ? 24 : 168;
     const since = Date.now() - hours * 3600 * 1000;
     return allRuns.filter((run) => {
+      if (!matches(query, run.rule, JSON.stringify(run.writes), run.reason, run.error)) return false;
       if (new Date(run.ts).getTime() < since) return false;
       if (ruleFilter && run.rule !== ruleFilter) return false;
-      if (outcomeFilter && run.outcome !== outcomeFilter) return false;
-      if (!showNoise && (run.outcome === "reading" || run.outcome === "system" || run.outcome === "pending"))
+      if (sourceFilter && run.source !== sourceFilter) return false;
+      if (outcomeFilter === "failed") {
+        if (!["failed", "partial"].includes(run.outcome)) return false;
+      } else if (outcomeFilter && run.outcome !== outcomeFilter) return false;
+      if (!showNoise && (run.outcome === "reading" || run.outcome === "system" || run.event.type === "timer"))
         return false;
       return true;
     });
-  }, [allRuns, window, ruleFilter, outcomeFilter, showNoise]);
+  }, [allRuns, window, ruleFilter, outcomeFilter, showNoise, query, sourceFilter]);
 
   return (
     <div>
@@ -46,6 +67,7 @@ export function ActivityScreen() {
         <Card variant="filled">
           <Row gap={12} wrap>
             <Select
+              label="Schedule"
               value={ruleFilter}
               onChange={setRuleFilter}
               options={[
@@ -54,18 +76,22 @@ export function ActivityScreen() {
               ]}
             />
             <Select
+              label="Outcome"
               value={outcomeFilter}
               onChange={setOutcomeFilter}
               options={[
                 { value: "", label: "Any outcome" },
-                { value: "ran", label: "Auto (schedules)" },
-                { value: "manual", label: "Manual (you)" },
+                { value: "pending", label: "Waiting for feedback" },
+                { value: "uncertain", label: "Uncertain" },
+                { value: "reported", label: "Reported" },
+                { value: "confirmed", label: "Confirmed" },
                 { value: "nothing", label: "Unchanged" },
                 { value: "skipped", label: "Skipped" },
                 { value: "failed", label: "Failed" },
               ]}
             />
             <Select
+              label="Time range"
               value={window}
               onChange={setWindow}
               options={[
@@ -75,11 +101,39 @@ export function ActivityScreen() {
                 { value: "168h", label: "Past 7 days" },
               ]}
             />
-            <Toggle checked={showNoise} onChange={setShowNoise} label="Include telemetry & timers" />
+            <details>
+              <summary>More filters</summary>
+              <Stack>
+                <Select
+                  label="Source"
+                  value={sourceFilter}
+                  onChange={(v) => filter("source", v)}
+                  options={[
+                    { value: "", label: "All sources" },
+                    { value: "schedule", label: "Schedules" },
+                    { value: "manual", label: "Manual requests" },
+                    { value: "system", label: "System" },
+                  ]}
+                />
+                <Toggle checked={showNoise} onChange={setShowNoise} label="Include telemetry and timers" />
+              </Stack>
+            </details>
+            <Button
+              variant="text"
+              onClick={() => {
+                clearSearch();
+                setParams({});
+              }}
+            >
+              Clear filters
+            </Button>
           </Row>
         </Card>
 
         <Card variant="elevated">
+          <Muted>
+            {Math.min(displayLimit, runs.length)} of {runs.length} matching events in the available log
+          </Muted>
           <Stack gap={0}>
             {runs.slice(0, displayLimit).map((run) => (
               <RunRow
@@ -89,7 +143,15 @@ export function ActivityScreen() {
                 onToggle={() => setOpen(open === run.id ? null : run.id)}
               />
             ))}
-            {runs.length === 0 ? <Empty>No events recorded in this time range.</Empty> : null}
+            {eventsQuery.isPending ? (
+              <Empty>Loading activity…</Empty>
+            ) : eventsQuery.isError ? (
+              <Empty>
+                Activity could not be refreshed. <Button onClick={() => eventsQuery.refetch()}>Retry</Button>
+              </Empty>
+            ) : runs.length === 0 ? (
+              <Empty>No activity matches these filters.</Empty>
+            ) : null}
             {runs.length > displayLimit ? (
               <Row justify="center" style={{ paddingTop: "16px" }}>
                 <Button variant="tonal" onClick={() => setDisplayLimit((n) => n + 100)}>
@@ -99,8 +161,6 @@ export function ActivityScreen() {
             ) : null}
           </Stack>
         </Card>
-
-        <UpcomingSection />
       </Stack>
     </div>
   );
@@ -112,38 +172,29 @@ function RunRow({ run, open, onToggle }: { run: Run; open: boolean; onToggle: ()
   const tone =
     run.outcome === "ran"
       ? "ok"
-      : run.outcome === "failed"
+      : ["failed", "partial"].includes(run.outcome)
         ? "bad"
         : run.outcome === "reading"
           ? "muted"
           : "warn";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "baseline",
-        gap: "14px",
-        padding: "14px 0",
-        borderBottom: "1px solid var(--md-sys-color-outline-variant)",
-        flexWrap: "wrap",
-      }}
-    >
+    <div className="activity-row">
       <span
         style={{
           fontFamily: "Roboto Mono, monospace",
           fontSize: "13px",
           color: "var(--md-sys-color-on-surface-variant)",
-          width: "60px",
+          width: "auto",
           flexShrink: 0,
         }}
       >
         {time.stamp(run.ts)}
       </span>
-      <div style={{ width: "88px", display: "flex", justifyContent: "flex-start", flexShrink: 0 }}>
+      <div style={{ width: "auto", display: "flex", justifyContent: "flex-start", flexShrink: 0 }}>
         <Badge tone={tone}>{outcomeLabel(run.outcome)}</Badge>
       </div>
-      <div style={{ flex: 1, minWidth: "260px", display: "flex", flexDirection: "column", gap: "6px" }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           {run.rule ? (
             <Link
@@ -153,13 +204,15 @@ function RunRow({ run, open, onToggle }: { run: Run; open: boolean; onToggle: ()
               {names.rule(run.rule)}
             </Link>
           ) : (
-            <strong>{run.outcome === "manual" ? "User Action" : "System Core"}</strong>
+            <strong>{run.source === "manual" ? "Manual request" : "System"}</strong>
           )}
           <span style={{ color: "var(--md-sys-color-on-surface)", fontSize: "14px" }}>
             {summary(run, names)}
           </span>
           <button
             type="button"
+            aria-expanded={open}
+            aria-controls={`run-${run.id}`}
             onClick={onToggle}
             style={{
               background: "transparent",
@@ -178,6 +231,7 @@ function RunRow({ run, open, onToggle }: { run: Run; open: boolean; onToggle: ()
 
         {open ? (
           <div
+            id={`run-${run.id}`}
             style={{
               marginTop: "4px",
               padding: "12px",
@@ -201,6 +255,7 @@ function RunRow({ run, open, onToggle }: { run: Run; open: boolean; onToggle: ()
                     attr: write.attr ?? "",
                     status: write.status ?? "applied",
                     reason: write.reason,
+                    source: write.source,
                     value: write.value,
                     previous: write.previous,
                   },
@@ -239,9 +294,20 @@ function RunRow({ run, open, onToggle }: { run: Run; open: boolean; onToggle: ()
 function summary(run: Run, names: ReturnType<typeof useNames>): string {
   switch (run.outcome) {
     case "ran":
+    case "pending":
+    case "reported":
+    case "confirmed":
+    case "uncertain":
+    case "partial":
     case "manual": {
-      if (!run.writes.length) return run.publishes.length ? "sent message" : "values already satisfied";
-      return run.writes
+      if (!run.writes.length) {
+        if (run.outcome === "pending")
+          return run.event.kind === "revert"
+            ? `temporary change on ${names.device(run.event.device)} ${humanizeWords(String(run.event.status))}`
+            : `${humanizeWords(String(run.event.status))} — waiting on ${names.rule(run.event.rule)}`;
+        return run.publishes.length ? "sent message" : "values already satisfied";
+      }
+      return latestWrites(run.writes)
         .map((write) => {
           const thing = names.device(write.device);
           const value = names.value(write.device, write.attr, write.value);
@@ -263,6 +329,7 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
                 value: write.value,
                 status: write.status ?? "pending",
                 reason: write.reason,
+                source: write.source,
               },
               names,
             );
@@ -279,7 +346,22 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
     case "skipped":
       return skipSentence(run.event);
     case "failed":
-      return `${humanizeWords(run.error ?? "failed")}`;
+      return run.writes.length
+        ? latestWrites(run.writes)
+            .map((w) =>
+              writeSentence(
+                {
+                  device: w.device ?? "",
+                  attr: w.attr ?? "",
+                  status: w.status ?? "failed",
+                  value: w.value,
+                  reason: w.reason,
+                },
+                names,
+              ),
+            )
+            .join("; ")
+        : humanizeWords(run.error ?? "failed");
     case "nothing":
       return "nothing to do";
     case "consumed":
@@ -288,10 +370,6 @@ function summary(run: Run, names: ReturnType<typeof useNames>): string {
       return "priority arbitration between concurrent schedules";
     case "reading":
       return `${names.device(run.event.device)} ${names.attr(run.event.device ?? "", run.event.attr ?? "").toLowerCase()} = ${names.value(run.event.device, run.event.attr, run.event.value)}`;
-    case "pending":
-      return run.event.kind === "revert"
-        ? `override on ${names.device(run.event.device)} ${humanizeWords(String(run.event.status))}`
-        : `${humanizeWords(String(run.event.status))} — waiting on ${names.rule(run.event.rule)}`;
     case "problem":
       return humanizeWords(run.event.error ?? run.event.type);
     default:

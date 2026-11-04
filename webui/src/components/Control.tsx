@@ -1,8 +1,12 @@
-import { useState } from "react";
-import { useRestoreOverride, useSetValue, useTime, useTimers } from "@/api/queries";
+import { useEffect, useState } from "react";
+import { useSetValue, useTime, useTimers } from "@/api/queries";
 import type { Reading } from "@/home/derive";
+import { commandBusy } from "@/lib/command-busy";
+import { durationWords } from "@/lib/format";
+import { numericError } from "@/lib/numeric";
 import { HOLD_CHOICES } from "@/lib/schedule";
-import { Badge, Button, Icon, Row, Select, Switch, Tabular, TextField } from "./primitives";
+import { CommandFeedback } from "./CommandFeedback";
+import { Badge, Button, Icon, Row, Select, Switch, TextField } from "./primitives";
 
 type Kind = "switch" | "boolean" | "select" | "number" | "text";
 
@@ -27,15 +31,19 @@ function isOn(reading: Reading): boolean {
 }
 
 function round(value: number): number {
-  return Math.round(value * 100) / 100;
+  return Number(value.toPrecision(12));
 }
 
 export function Control({ reading, heading }: { reading: Reading; heading?: string }) {
   const setValue = useSetValue();
-  const restore = useRestoreOverride();
   const time = useTime();
   const timers = useTimers().data;
   const [draft, setDraft] = useState<string | null>(null);
+  const [holdDuration, setHoldDuration] = useState(HOLD_CHOICES[0]);
+
+  useEffect(() => {
+    if (draft !== null && draft === String(reading.value ?? "")) setDraft(null);
+  }, [reading.value]);
 
   const override = timers?.timers.find(
     (timer) => timer.kind === "revert" && timer.device === reading.device && timer.attr === reading.attr,
@@ -43,12 +51,21 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
   const pendingHold = timers?.timers.find(
     (timer) => timer.kind === "for" && timer.device === reading.device && timer.attr === reading.attr,
   );
-  const busy = setValue.isPending;
+  const busy = commandBusy(setValue.isPending, setValue.data, [reading]);
   const kind = kindOf(reading);
   const current = reading.value;
   const target = heading ?? reading.label;
+  const numberError =
+    draft !== null && kind === "number"
+      ? !draft.trim()
+        ? "Enter a valid number."
+        : numericError(Number(draft), reading)
+      : null;
+  const dirty = draft !== null && draft !== String(current ?? "");
 
   const write = (value: unknown, revertAfter?: string) => {
+    if (busy) return;
+    if (typeof value === "number" && numericError(value, reading)) return;
     setValue.mutate({
       target: { kind: "device", id: reading.device },
       body: { [reading.attr]: value as never, ...(revertAfter ? { revert_after: revertAfter } : {}) },
@@ -61,10 +78,9 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
         display: "flex",
         flexDirection: "column",
         gap: "8px",
-        backgroundColor: "var(--md-sys-color-surface-container-high)",
-        padding: "10px 14px",
+        backgroundColor: "transparent",
+        padding: "4px 0",
         borderRadius: "8px",
-        opacity: !reading.known ? 0.6 : 1,
       }}
     >
       <div
@@ -81,176 +97,119 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
             style={{ fontSize: "13px", fontWeight: 500, color: "var(--md-sys-color-on-surface-variant)" }}
           >
             {reading.label}
+            {kind !== "number" ? " · Reported" : ""}
           </span>
-          {reading.pending ? (
-            <Badge tone="warn">
-              {reading.pending.status}: {String(reading.pending.value)}
-            </Badge>
-          ) : null}
-          {reading.outcome ? (
-            <Badge tone="muted">
-              {reading.outcome === "reported" ? "reported by MELCloud" : reading.outcome}
-            </Badge>
-          ) : null}
           {!reading.known ? (
             <Badge tone="muted" title="No telemetry received">
-              waiting
+              State unknown
             </Badge>
           ) : kind === "switch" || kind === "boolean" ? (
             <Badge tone={isOn(reading) ? "ok" : "muted"}>{isOn(reading) ? "ON" : "OFF"}</Badge>
           ) : kind === "select" ? (
             <Badge tone="accent">{optionLabel(reading, current)}</Badge>
-          ) : (
-            <Tabular style={{ fontSize: "18px", fontWeight: 700, color: "var(--md-sys-color-on-surface)" }}>
-              {current === undefined ? "—" : String(round(Number(current)))}
-              {reading.unit ? (
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--md-sys-color-on-surface-variant)",
-                    marginLeft: "2px",
-                  }}
-                >
-                  {reading.unit}
-                </span>
-              ) : null}
-            </Tabular>
-          )}
+          ) : kind === "text" ? (
+            <span>{String(current ?? "—")}</span>
+          ) : null}
         </Row>
 
         {kind === "switch" || kind === "boolean" ? (
-          <Row gap={4}>
-            {reading.hold ? (
-              <>
-                {HOLD_CHOICES.slice(0, 3).map((hold) => (
-                  <Button
-                    key={hold}
-                    size="small"
-                    variant="tonal"
-                    disabled={busy}
-                    title={`Turn on for ${hold}`}
-                    onClick={() => write(reading.on, hold)}
-                  >
-                    {hold}
-                  </Button>
-                ))}
-                <Button
-                  size="small"
-                  variant="outlined"
+          <Row gap={4} wrap>
+            {reading.hold && (
+              <details>
+                <summary>Temporary change</summary>
+                <Select
+                  label="Restore previous value after"
+                  value={holdDuration}
                   disabled={busy}
-                  title="Turn off"
-                  onClick={() => write(reading.off)}
-                >
+                  onChange={setHoldDuration}
+                  options={HOLD_CHOICES.map((value) => ({ value, label: durationWords(value) }))}
+                />
+                <Button variant="tonal" disabled={busy} onClick={() => write(reading.on, holdDuration)}>
+                  Turn on temporarily
+                </Button>
+                <p>A schedule may change this value before it is restored.</p>
+              </details>
+            )}
+            {reading.known ? (
+              <Switch
+                checked={isOn(reading)}
+                disabled={busy}
+                label={`${target} ${isOn(reading) ? "off" : "on"}`}
+                onChange={(next) => write(next ? reading.on : reading.off)}
+              />
+            ) : (
+              <>
+                <Button variant="outlined" disabled={busy} onClick={() => write(reading.on)}>
+                  On
+                </Button>
+                <Button variant="outlined" disabled={busy} onClick={() => write(reading.off)}>
                   Off
                 </Button>
               </>
-            ) : null}
-            <Switch
-              checked={isOn(reading)}
-              disabled={busy}
-              label={`${target} ${isOn(reading) ? "off" : "on"}`}
-              onChange={(next) => write(next ? reading.on : reading.off)}
-            />
+            )}
           </Row>
         ) : null}
       </div>
 
-      {kind === "number" ? (
-        <Row gap={12} wrap>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              borderRadius: "9999px",
-              backgroundColor: "var(--md-sys-color-surface-container-highest)",
-              border: "1px solid var(--md-sys-color-outline-variant)",
-              overflow: "hidden",
-            }}
-          >
+      {kind === "number" && (
+        <div className="form-section">
+          <div className="number-editor">
             <button
               type="button"
-              disabled={busy || typeof current !== "number"}
-              title="Decrease setpoint"
-              onClick={() => write(round(Number(current) - (reading.step ?? 0.5)))}
-              style={{
-                width: "36px",
-                height: "36px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--md-sys-color-on-surface)",
-              }}
+              aria-label={`Decrease ${target}`}
+              disabled={
+                busy ||
+                !Number.isFinite(Number(draft ?? current)) ||
+                (reading.min != null && Number(draft ?? current) - (reading.step ?? 1) < reading.min)
+              }
+              onClick={() => setDraft(String(round(Number(draft ?? current) - (reading.step ?? 1))))}
             >
-              <Icon name="remove" />
+              −
             </button>
-            <Tabular
-              style={{
-                minWidth: "60px",
-                textAlign: "center",
-                fontSize: "16px",
-                fontWeight: 700,
-                padding: "0 6px",
-              }}
-            >
-              {typeof current === "number" ? round(current) : "—"}
-              {reading.unit ? (
-                <span style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)" }}>
-                  {" "}
-                  {reading.unit}
-                </span>
-              ) : null}
-            </Tabular>
+            <TextField
+              label={`${reading.label}${reading.unit ? ` (${reading.unit})` : ""}`}
+              error={numberError ?? undefined}
+              supportingText={
+                dirty && reading.known
+                  ? `Reported: ${current}${reading.unit ? ` ${reading.unit}` : ""}`
+                  : undefined
+              }
+              type="number"
+              value={draft ?? String(current ?? "")}
+              min={reading.min ?? undefined}
+              max={reading.max ?? undefined}
+              step={reading.step}
+              disabled={busy}
+              onChange={setDraft}
+            />
             <button
               type="button"
-              disabled={busy || typeof current !== "number"}
-              title="Increase setpoint"
-              onClick={() => write(round(Number(current) + (reading.step ?? 0.5)))}
-              style={{
-                width: "36px",
-                height: "36px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--md-sys-color-on-surface)",
-              }}
+              aria-label={`Increase ${target}`}
+              disabled={
+                busy ||
+                !Number.isFinite(Number(draft ?? current)) ||
+                (reading.max != null && Number(draft ?? current) + (reading.step ?? 1) > reading.max)
+              }
+              onClick={() => setDraft(String(round(Number(draft ?? current) + (reading.step ?? 1))))}
             >
-              <Icon name="add" />
+              +
             </button>
           </div>
-
-          {reading.unit === "C" &&
-          reading.min !== null &&
-          reading.min !== undefined &&
-          reading.max !== null &&
-          reading.max !== undefined ? (
-            <div style={{ minWidth: "160px" }}>
-              <Select
-                value=""
-                onChange={(value) => {
-                  if (value) write(Number(value));
-                }}
-                options={[
-                  { value: "", label: "Preset temperature…" },
-                  ...temperatureChoices(reading.min, reading.max, reading.step ?? 0.5).map((value) => ({
-                    value: String(value),
-                    label: `${value} °C`,
-                  })),
-                ]}
-              />
-            </div>
-          ) : null}
-        </Row>
-      ) : null}
+          <Button
+            disabled={busy || draft === null || Boolean(numberError) || Number(draft) === current}
+            onClick={() => {
+              if (draft?.trim() && !numberError) write(Number(draft));
+            }}
+          >
+            Apply
+          </Button>
+        </div>
+      )}
 
       {kind === "select" ? (
         <div style={{ maxWidth: "280px" }}>
           <Select
+            label={reading.label}
             value={String(current ?? "")}
             disabled={busy}
             onChange={(value) => write(reading.options?.find((option) => String(option) === value) ?? value)}
@@ -263,9 +222,37 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
       ) : null}
 
       {kind === "text" ? (
-        <TextField value={draft ?? String(current ?? "")} onChange={setDraft} placeholder="—" />
+        <Row wrap>
+          <TextField
+            label={reading.label}
+            disabled={busy}
+            value={draft ?? String(current ?? "")}
+            onChange={setDraft}
+            placeholder="Enter a value"
+          />
+          <Button
+            disabled={busy || draft === null || draft === String(current ?? "")}
+            onClick={() => {
+              if (draft !== null) write(draft);
+            }}
+          >
+            Apply
+          </Button>
+        </Row>
       ) : null}
 
+      {dirty && (kind === "text" || kind === "number") && (
+        <Button variant="text" disabled={busy} onClick={() => setDraft(null)}>
+          Discard changes
+        </Button>
+      )}
+      {busy && !reading.pending && <span role="status">Waiting for device feedback…</span>}
+      <CommandFeedback reading={reading} />
+      {setValue.error && (
+        <p role="alert" className="form-error">
+          {setValue.error.message}
+        </p>
+      )}
       {override?.due_at ? (
         <Row gap={8} wrap>
           <Badge tone="warn">
@@ -275,10 +262,19 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
               {override.value === undefined
                 ? "previous setting"
                 : `${override.value}${reading.unit ? ` ${reading.unit}` : ""}`}{" "}
-              in {time.rel(override.due_at)}
+              at {time.stamp(override.due_at)} ({time.rel(override.due_at)})
             </span>
           </Badge>
-          <Button size="small" variant="text" onClick={() => restore(override)}>
+          <Button
+            size="small"
+            variant="text"
+            disabled={
+              busy ||
+              override.value == null ||
+              (typeof override.value === "number" && Boolean(numericError(override.value, reading)))
+            }
+            onClick={() => write(override.value)}
+          >
             Restore now
           </Button>
         </Row>
@@ -288,8 +284,8 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
         <Row gap={4} style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)" }}>
           <Icon name="hourglass_top" />
           <span>
-            {reading.schedules.length ? "A schedule is" : "A schedule will act"} waiting for this value to
-            hold until {time.stamp(pendingHold.due_at)}
+            A schedule is waiting until {time.stamp(pendingHold.due_at)} before checking its conditions.
+            Another trigger may restart the wait.
           </span>
         </Row>
       ) : null}
@@ -306,11 +302,4 @@ export function Control({ reading, heading }: { reading: Reading; heading?: stri
       ) : null}
     </div>
   );
-}
-
-function temperatureChoices(min: number, max: number, step: number): number[] {
-  const values: number[] = [];
-  for (let value = Math.ceil(min / step) * step; value <= max + 1e-9; value = round(value + step))
-    values.push(value);
-  return values.slice(0, 80);
 }

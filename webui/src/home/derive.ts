@@ -36,6 +36,9 @@ export interface Reading {
   isControl: boolean;
   pending?: { request_id: string; value: unknown; status: string };
   outcome?: string;
+  result?: { status: string; reason?: string | null; [key: string]: unknown };
+  available?: boolean;
+  availabilityReason?: string | null;
   declaredType?: string;
 }
 
@@ -99,28 +102,31 @@ function switchValues(device: Device, attr: string): { on: unknown; off: unknown
 }
 
 /** Build the room/thing model from the backend's device, rule and group payloads. */
-export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): Home {
+export function buildHome(devices: Device[], rules: Rule[], groups: Group[]): Home {
   const writersByAttribute = new Map<string, string[]>();
   const rulesByTarget = new Map<string, Rule[]>();
   for (const rule of rules) {
     for (const action of rule.then) {
-      const target = action.set?.device ?? action.set_curve?.device;
+      const device = action.set?.device ?? action.set_curve?.device;
+      const group = action.set?.group ?? action.set_curve?.group;
+      const targets = device ? [device] : (groups.find((g) => g.id === group)?.members ?? []);
       const attr = action.set?.attr ?? action.set_curve?.attr;
-      if (!target) continue;
-      const targetRules = rulesByTarget.get(target) ?? [];
-      if (!targetRules.some((item) => item.id === rule.id)) targetRules.push(rule);
-      rulesByTarget.set(target, targetRules);
-      if (!attr) continue;
-      const key = `${target}\u0000${attr}`;
-      const list = writersByAttribute.get(key) ?? [];
-      if (!list.includes(rule.id)) list.push(rule.id);
-      writersByAttribute.set(key, list);
+      for (const target of targets) {
+        const targetRules = rulesByTarget.get(target) ?? [];
+        if (!targetRules.some((item) => item.id === rule.id)) targetRules.push(rule);
+        rulesByTarget.set(target, targetRules);
+        if (!attr) continue;
+        const key = `${target}\u0000${attr}`;
+        const list = writersByAttribute.get(key) ?? [];
+        if (!list.includes(rule.id)) list.push(rule.id);
+        writersByAttribute.set(key, list);
+      }
     }
   }
 
   const built: Thing[] = devices.map((device) => {
     const meta = things[device.id];
-    const hidden = new Set([...(meta?.hide ?? []), ...NOISY_ATTRIBUTES]);
+    const hidden = new Set(meta?.hide ?? []);
     const attrs = Object.keys(device.attributes);
     const allHidden = !meta && attrs.length > 0 && attrs.every((attr) => hidden.has(attr));
     const ordered = [...new Set([...(meta?.primary ?? []), ...PRIMARY_PREFERENCE, ...attrs])].filter((attr) =>
@@ -151,13 +157,17 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
         off: switches.off,
         min: spec.limits?.[0] ?? null,
         max: spec.limits?.[1] ?? null,
-        step: curatedControl?.step ?? 0.5,
+        step:
+          curatedControl?.step ?? (typeof spec.step === "number" && spec.step > 0 ? spec.step : undefined),
         hold: curatedControl?.hold,
         options: spec.enum ?? undefined,
         schedules: writersByAttribute.get(`${device.id}\u0000${attr}`) ?? [],
         isControl,
         pending: device.pending?.[attr],
         outcome: device.command_results?.[attr]?.status,
+        result: device.command_results?.[attr],
+        available: device.availability?.available,
+        availabilityReason: device.availability?.reason,
         declaredType: spec.type,
       });
     }
@@ -167,12 +177,12 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
     );
     const primary = curatedPrimary.length
       ? readings.filter((reading) => curatedPrimary.includes(reading.attr))
-      : readings.slice(0, 2);
+      : readings.filter((r) => !NOISY_ATTRIBUTES.has(r.attr)).slice(0, 2);
 
     const controls: Reading[] = meta?.controls
       ? meta.controls.flatMap((control) => {
           const reading = readings.find((r) => r.attr === control.attr);
-          if (!reading || !reading.isControl) return [];
+          if (!reading?.isControl) return [];
           return [
             {
               ...reading,
@@ -184,7 +194,7 @@ export function buildHome(devices: Device[], rules: Rule[], _groups: Group[]): H
             },
           ];
         })
-      : readings.filter((reading) => reading.isControl);
+      : readings.filter((reading) => reading.isControl && !NOISY_ATTRIBUTES.has(reading.attr));
 
     return {
       id: device.id,

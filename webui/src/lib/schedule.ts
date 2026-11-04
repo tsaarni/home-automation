@@ -46,6 +46,8 @@ export interface EveryTrigger {
 export type Trigger = AtTrigger | StateTrigger | EveryTrigger;
 
 export interface Clause {
+  /** Original position survives removal of other draft actions. */
+  sourceIndex?: number;
   target: { kind: "device" | "group"; id: string };
   attr: string;
   value: Scalar;
@@ -95,13 +97,14 @@ export function parseRule(rule: Rule): ParseResult {
       ? { kind: "state", device: when.device, attr: when.attr ?? "", changed: Boolean(when.changed) }
       : { kind: "every", every: when.every ?? "15m" };
 
-  const then: Clause[] = rule.then.map((action) => {
+  const then: Clause[] = rule.then.map((action, sourceIndex) => {
     const set = action.set;
     if (!set) throw new Error("unrepresentable action slipped through");
     const target = set.device
       ? ({ kind: "device", id: set.device } as const)
       : ({ kind: "group", id: set.group ?? "" } as const);
     return {
+      sourceIndex,
       target,
       attr: set.attr,
       value: set.value as Scalar,
@@ -149,10 +152,19 @@ export function applySchedule(rule: Rule, schedule: ParsedSchedule, overrides: P
   const doc: Record<string, unknown> = {
     ...rest,
     ...(overrides as Record<string, unknown>),
-    when: whenDocument(schedule.when),
-    then: schedule.then.map((clause, index) => clauseDocument(clause, rule.then[index])),
+    when: {
+      ...Object.fromEntries(
+        Object.entries(rule.when).filter(
+          ([key]) => !["at", "device", "attr", "every", "days", "offset", "changed"].includes(key),
+        ),
+      ),
+      ...whenDocument(schedule.when),
+    },
+    then: schedule.then.map((clause, index) =>
+      clauseDocument(clause, rule.then[clause.sourceIndex ?? index]),
+    ),
   };
-  if (schedule.onlyIf?.terms.length) doc.if = { all: schedule.onlyIf.terms };
+  if (schedule.onlyIf?.terms.length) doc.if = { ...rule.if, all: schedule.onlyIf.terms };
   if (schedule.hold) doc.for = schedule.hold;
   return doc as Rule;
 }
@@ -190,7 +202,7 @@ export function emptySchedule(): ParsedSchedule {
 
 /** Build a clause for a thing's control. */
 export function clauseFor(kind: "device" | "group", id: string, attr: string, value: Scalar): Clause {
-  return { target: { kind, id }, attr, value, revertAfter: null };
+  return { sourceIndex: -1, target: { kind, id }, attr, value, revertAfter: null };
 }
 
 export function slugify(text: string, fallback = "schedule"): string {
@@ -215,7 +227,8 @@ export function describeTrigger(trigger: Trigger, names: Names): string {
   switch (trigger.kind) {
     case "at": {
       const offset = trigger.offset ? ` ${offsetLabel(trigger.offset)}` : "";
-      if (trigger.solar) return `At ${solarLabel(trigger.at)}${offset}`;
+      if (trigger.solar)
+        return `At ${solarLabel(trigger.at)}${offset}${trigger.days.length && trigger.days.length !== 7 ? ` on ${dayList(trigger.days)}` : ""}`;
       const everyDay = trigger.days.length === 0 || trigger.days.length === 7;
       return everyDay ? `Every day at ${trigger.at}` : `At ${trigger.at} on ${dayList(trigger.days)}`;
     }
@@ -322,7 +335,7 @@ export function describeSchedule(schedule: ParsedSchedule, names: Names): Descri
         : `set ${action.targetLabel} ${action.label} to ${action.valueText}${tail}`;
     })
     .join(", then ");
-  const sentence = `${when} ${actionText}${onlyIf ? ` if ${onlyIf}` : ""}${hold ? ` and it stays like that for ${hold}` : ""}`;
+  const sentence = `${when} ${actionText}${onlyIf ? ` if ${onlyIf}` : ""}${hold ? ` after waiting ${hold}` : ""}`;
   return { when, onlyIf, hold, actions, sentence };
 }
 

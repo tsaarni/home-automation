@@ -12,6 +12,7 @@ export const MAX_EVENTS = 2000;
 export function eventKey(event: Event): string {
   return [
     event.ts,
+    event.request_id ?? "",
     event.type,
     event.rule ?? "",
     event.device ?? "",

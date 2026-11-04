@@ -7,7 +7,8 @@ export function Toasts() {
   useEffect(() => {
     const unsubscribe = subscribeToasts((toast) => {
       setItems((current) => [...current.slice(-3), toast]);
-      setTimeout(() => setItems((current) => current.filter((item) => item.id !== toast.id)), 5000);
+      if (toast.kind !== "bad")
+        setTimeout(() => setItems((current) => current.filter((item) => item.id !== toast.id)), 5000);
     });
     return unsubscribe;
   }, []);
@@ -44,7 +45,7 @@ export function Toasts() {
         return (
           <div
             key={item.id}
-            onClick={() => setItems((current) => current.filter((entry) => entry.id !== item.id))}
+            role={item.kind === "bad" ? "alert" : "status"}
             style={{
               borderRadius: "8px",
               padding: "12px 16px",
@@ -56,6 +57,20 @@ export function Toasts() {
             }}
           >
             {item.message}
+            <button
+              type="button"
+              aria-label="Dismiss notification"
+              onClick={() => setItems((current) => current.filter((entry) => entry.id !== item.id))}
+              style={{
+                marginLeft: 12,
+                background: "transparent",
+                border: 0,
+                color: "inherit",
+                minHeight: 32,
+              }}
+            >
+              ×
+            </button>
           </div>
         );
       })}

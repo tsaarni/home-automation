@@ -7,6 +7,10 @@ import type { Names } from "@/home/names";
 
 /** What a row in the activity list is. */
 export type Outcome =
+  | "uncertain"
+  | "partial"
+  | "reported"
+  | "confirmed"
   | "ran"
   | "nothing"
   | "skipped"
@@ -58,7 +62,11 @@ export function rowOf(event: Event): Outcome {
       return "consumed";
     case "command_result":
     case "write":
-      return event.rule ? "ran" : "manual";
+      return event.status && !["applied", "unchanged", "dry-run"].includes(event.status)
+        ? outcomeFromWrites([event as unknown as WriteResult])
+        : event.rule
+          ? "ran"
+          : "manual";
     case "state":
       return "reading";
     case "timer":
@@ -77,6 +85,14 @@ export function rowOf(event: Event): Outcome {
 
 export function outcomeLabel(outcome: Outcome): string {
   switch (outcome) {
+    case "uncertain":
+      return "Uncertain";
+    case "partial":
+      return "Partial failure";
+    case "reported":
+      return "Reported";
+    case "confirmed":
+      return "Confirmed";
     case "ran":
       return "Auto";
     case "nothing":
@@ -149,17 +165,17 @@ export function writeSentence(result: WriteResult, names: Names): string {
   const was = result.previous === undefined || result.previous === null ? "" : ` (was ${before})`;
   switch (result.status) {
     case "pending":
-      return `${target}: request pending; waiting for device feedback`;
+      return `${target}: requested ${after}; waiting for device feedback`;
     case "accepted":
-      return `${target}: API accepted the request; waiting for reported state`;
+      return `${target}: requested ${after}; accepted, waiting for reported state`;
     case "reported":
-      return `${target}: reported by MELCloud`;
+      return `${target}: request for ${after} reported${result.source === "melcloud" ? " by MELCloud" : ""}; device confirmation unavailable`;
     case "confirmed":
-      return `${target}: matching state observed on the device`;
+      return `${target}: matching state ${after} observed on the device`;
     case "failed":
       return `${target}: request failed: ${humanizeWords(result.reason ?? "device rejection")}`;
     case "unconfirmed":
-      return `${target}: outcome uncertain: ${humanizeWords(result.reason ?? "no matching readback")}`;
+      return `${target}: request for ${after} is uncertain: ${humanizeWords(result.reason ?? "no matching readback")}. Check reported state.`;
     case "applied":
       return switchy ? `turned ${target} ${after}${was}` : `${target} set to ${after}${was}`;
     case "unchanged":
@@ -183,7 +199,12 @@ export function writeSentence(result: WriteResult, names: Names): string {
 /** Outcome of a run given its individual write results. */
 export function outcomeFromWrites(results: WriteResult[]): Outcome {
   if (!results.length) return "ran";
-  if (results.some((result) => result.status === "error")) return "failed";
+  const failed = results.filter((r) => r.status === "error" || r.status === "failed").length;
+  if (failed) return failed === results.length ? "failed" : "partial";
+  if (results.some((r) => r.status === "unconfirmed")) return "uncertain";
+  if (results.some((r) => r.status === "pending" || r.status === "accepted")) return "pending";
+  if (results.some((r) => r.status === "reported")) return "reported";
+  if (results.some((r) => r.status === "confirmed")) return "confirmed";
   if (results.every((result) => result.status === "unchanged")) return "nothing";
   if (results.every((result) => result.status === "dry-run")) return "nothing";
   return "ran";
@@ -290,7 +311,10 @@ export function provenanceSentence(
       rule: event.rule,
     };
   }
-  if (event.source === "mqtt") {
+  if (
+    ["mqtt", "melcloud", "shelly", "gateway", "device"].includes(event.source ?? "") ||
+    event.type === "command_result"
+  ) {
     return { title: "The device", detail: `reported ${value} at ${at}`, kind: "device" };
   }
   return { title: "Unknown source", detail: `${value} at ${at}`, kind: "unknown" };

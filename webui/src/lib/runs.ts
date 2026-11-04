@@ -13,6 +13,7 @@ export interface Run {
   ts: string;
   outcome: Outcome;
   rule: string | null;
+  source: "schedule" | "manual" | "system";
   /** the event that started the row */
   event: Event;
   writes: Event[];
@@ -29,23 +30,53 @@ function writeFromEvent(event: Event) {
 }
 
 function outcomeFor(event: Event, writes: Event[]): Outcome {
-  if (event.type === "rule_fire" && writes.length) {
-    return outcomeFromWrites(writes.map(writeFromEvent));
+  if (writes.length) {
+    const outcome = outcomeFromWrites(latestWrites(writes).map(writeFromEvent));
+    return outcome === "ran" && !event.rule && event.type !== "rule_fire" ? "manual" : outcome;
   }
   return rowOf(event);
 }
 
 /** Events of any order in, newest-first runs out. */
 export function buildRuns(events: Event[], windowMs = GROUP_WINDOW_MS): Run[] {
-  const ordered = [...events].sort((a, b) => a.ts.localeCompare(b.ts));
+  const expanded = events.flatMap((event) => {
+    if (event.type !== "command_result" || event.attr || !event.request_id) return [event];
+    const attrs = new Map(
+      events
+        .filter((e) => e.type === "write" && e.request_id === event.request_id && e.attr)
+        .map((e) => [`${e.device}|${e.attr}`, e]),
+    );
+    return attrs.size
+      ? [...attrs.values()].map((write) => ({
+          ...write,
+          ...event,
+          device: write.device,
+          attr: write.attr,
+          value: event.value ?? write.value,
+          rule: event.rule ?? write.rule,
+        }))
+      : [event];
+  });
+  const ordered = expanded.sort((a, b) => a.ts.localeCompare(b.ts));
   const runs: Run[] = [];
   const openByRule = new Map<string, Run>();
+  const byRequest = new Map<string, Set<Run>>();
+  const rememberRequest = (id: string, run: Run) => {
+    const known = byRequest.get(id) ?? new Set<Run>();
+    known.add(run);
+    byRequest.set(id, known);
+  };
 
   const open = (base: { ts: string; rule: string | null; event: Event; outcome: Outcome }): Run => {
     const run: Run = {
       id: `${base.ts}|${base.rule ?? "-"}|${runs.length}`,
       ts: base.ts,
       rule: base.rule,
+      source: base.rule
+        ? "schedule"
+        : ["write", "command_result"].includes(base.event.type)
+          ? "manual"
+          : "system",
       event: base.event,
       outcome: base.outcome,
       writes: [],
@@ -59,13 +90,29 @@ export function buildRuns(events: Event[], windowMs = GROUP_WINDOW_MS): Run[] {
   };
 
   const attach = (event: Event, target: "writes" | "publishes"): boolean => {
+    const request = typeof event.request_id === "string" ? event.request_id : null;
+    const candidates = request ? [...(byRequest.get(request) ?? [])] : [];
+    const correlated =
+      candidates.find((r) =>
+        event.rule
+          ? r.rule === event.rule
+          : r.writes.some((w) => w.device === event.device && w.attr === event.attr),
+      ) ?? candidates.find((r) => !r.rule && !event.rule);
+    if (correlated) {
+      correlated[target].push(event);
+      correlated.outcome = outcomeFor(correlated.event, correlated.writes);
+      return true;
+    }
+    // A result with an unknown request must not attach to a nearby execution.
+    if (event.type === "command_result") return false;
     const ruleId = event.rule;
     if (!ruleId) return false;
     const run = openByRule.get(ruleId);
-    if (!run || run.writes.length + run.publishes.length >= 64) return false;
+    if (run?.event.type !== "rule_fire" || run.writes.length + run.publishes.length >= 64) return false;
     const gap = new Date(event.ts).getTime() - new Date(run.ts).getTime();
     if (gap < 0 || gap > windowMs) return false;
     run[target].push(event);
+    if (request) rememberRequest(request, run);
     if (target === "writes") run.outcome = outcomeFor(run.event, run.writes);
     return true;
   };
@@ -78,12 +125,10 @@ export function buildRuns(events: Event[], windowMs = GROUP_WINDOW_MS): Run[] {
       case "command_result":
       case "write":
         if (!attach(event, "writes")) {
-          open({
-            ts: event.ts,
-            rule: event.rule ?? null,
-            event,
-            outcome: event.rule ? "ran" : "manual",
-          }).writes.push(event);
+          const run = open({ ts: event.ts, rule: event.rule ?? null, event, outcome: rowOf(event) });
+          run.writes.push(event);
+          run.outcome = outcomeFor(event, run.writes);
+          if (typeof event.request_id === "string") rememberRequest(event.request_id, run);
         }
         break;
       case "publish":
@@ -118,6 +163,16 @@ export function buildRuns(events: Event[], windowMs = GROUP_WINDOW_MS): Run[] {
   return runs.sort((a, b) => b.ts.localeCompare(a.ts) || b.id.localeCompare(a.id));
 }
 
+/** Latest stage per request and attribute, preserving each attribute's outcome. */
+export function latestWrites(events: Event[]): Event[] {
+  const latest = new Map<string, Event>();
+  for (const event of [...events].sort((a, b) => a.ts.localeCompare(b.ts))) {
+    const key = `${event.request_id ?? "legacy"}|${event.device}|${event.attr}`;
+    latest.set(key, event);
+  }
+  return [...latest.values()];
+}
+
 export function lastRunPerRule(runs: Run[]): Map<string, Run> {
   const map = new Map<string, Run>();
   for (const run of runs) {
@@ -131,7 +186,7 @@ export function lastRunPerRule(runs: Run[]): Map<string, Run> {
 export function provenanceIndex(events: Event[]): Map<string, Event> {
   const map = new Map<string, Event>();
   for (const event of events) {
-    if (event.type !== "write" && event.type !== "state") continue;
+    if (event.type !== "state" && !(event.type === "write" && event.status === "applied")) continue;
     if (!event.device || !event.attr) continue;
     const key = `${event.device}\u0000${event.attr}`;
     const existing = map.get(key);

@@ -68,7 +68,9 @@ export function DayStrip({ marks, label }: { marks: DayMark[]; label: string }) 
             >
               {mark.solar ? "≈" : ""}
               {mark.label}
-              {mark.value ? ` · ${mark.value === "ON" ? "on" : mark.value === "OFF" ? "off" : mark.value}` : ""}
+              {mark.value
+                ? ` · ${mark.value === "ON" ? "on" : mark.value === "OFF" ? "off" : mark.value}`
+                : ""}
             </span>
           </div>
         ))}

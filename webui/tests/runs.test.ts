@@ -181,3 +181,121 @@ describe("runs", () => {
     expect(items.map((item) => item.kind)).toEqual(["schedule", "revert", "for"]);
   });
 });
+
+describe("command lifecycle correlation", () => {
+  it("correlates delayed and overlapping requests without attaching to a nearby fire", () => {
+    const runs = buildRuns(
+      [
+        event({ type: "rule_fire", rule: "light" }),
+        event({
+          ts: at(0.1),
+          type: "write",
+          rule: "light",
+          device: "plug",
+          attr: "state",
+          status: "pending",
+          request_id: "old",
+        }),
+        event({ ts: at(1), type: "rule_fire", rule: "light" }),
+        event({
+          ts: at(1.1),
+          type: "write",
+          rule: "light",
+          device: "plug",
+          attr: "state",
+          status: "pending",
+          request_id: "new",
+        }),
+        event({
+          ts: at(2),
+          type: "command_result",
+          device: "plug",
+          attr: "state",
+          status: "confirmed",
+          request_id: "new",
+        }),
+        event({
+          ts: at(60),
+          type: "command_result",
+          device: "plug",
+          attr: "state",
+          status: "failed",
+          request_id: "old",
+        }),
+      ].reverse(),
+    );
+    expect(runs).toHaveLength(2);
+    expect(runs[0].outcome).toBe("confirmed");
+    expect(runs[1].outcome).toBe("failed");
+    expect(runs.every((r) => r.rule === "light" && r.source === "schedule")).toBe(true);
+  });
+  it("groups a manual patch and preserves partial and uncertain outcomes", () => {
+    const writes = [
+      event({ type: "write", device: "pump", attr: "mode", status: "pending", request_id: "a" }),
+      event({ type: "write", device: "pump", attr: "setpoint", status: "pending", request_id: "a" }),
+      event({
+        ts: at(3),
+        type: "command_result",
+        device: "pump",
+        attr: "mode",
+        status: "confirmed",
+        request_id: "a",
+      }),
+      event({
+        ts: at(5),
+        type: "command_result",
+        device: "pump",
+        attr: "setpoint",
+        status: "failed",
+        request_id: "a",
+      }),
+    ];
+    const runs = buildRuns(writes);
+    expect(runs).toHaveLength(1);
+    expect(runs[0].outcome).toBe("partial");
+    expect(runs[0].source).toBe("manual");
+    expect(buildRuns([event({ type: "command_result", status: "unconfirmed" })])[0].outcome).toBe(
+      "uncertain",
+    );
+    expect(
+      provenanceIndex([event({ type: "write", device: "pump", attr: "mode", status: "pending" })]).size,
+    ).toBe(0);
+  });
+});
+
+it("keeps per-schedule provenance in a shared gateway patch and expands request-wide timeouts", () => {
+  const runs = buildRuns([
+    event({ type: "rule_fire", rule: "a" }),
+    event({ type: "rule_fire", rule: "b" }),
+    event({
+      ts: at(1),
+      type: "write",
+      rule: "a",
+      request_id: "shared",
+      device: "pump",
+      attr: "mode",
+      value: "cool",
+      status: "pending",
+    }),
+    event({
+      ts: at(1),
+      type: "write",
+      rule: "b",
+      request_id: "shared",
+      device: "pump",
+      attr: "setpoint",
+      value: 20,
+      status: "pending",
+    }),
+    event({
+      ts: at(40),
+      type: "command_result",
+      request_id: "shared",
+      device: "pump",
+      status: "unconfirmed",
+    }),
+  ]);
+  expect(runs).toHaveLength(2);
+  expect(runs.map((r) => r.rule).sort()).toEqual(["a", "b"]);
+  expect(runs.every((r) => r.outcome === "uncertain")).toBe(true);
+});

@@ -143,7 +143,9 @@ export function useSetValue() {
       notify("bad", errorMessage(error));
     },
     onSuccess: (results, { body }) => {
-      const bad = results.find((result) => result.status === "error" || result.status === "skipped");
+      const bad = results.find(
+        (result) => result.status === "error" || result.status === "skipped" || result.status === "failed",
+      );
       if (bad) {
         notify("bad", bad.reason ? bad.reason.replace(/[_-]+/g, " ") : "the device refused the change");
         return;
@@ -156,7 +158,16 @@ export function useSetValue() {
         notify("info", "dry run: nothing was sent to the device");
         return;
       }
-      if (results.some((result) => result.status === "pending")) {
+      if (results.some((result) => result.status === "unconfirmed")) {
+        notify("info", "Outcome uncertain. Check reported state.");
+        return;
+      }
+      if (
+        results.some(
+          (result) =>
+            result.status === "pending" || result.status === "accepted" || result.status === "reported",
+        )
+      ) {
         notify("info", "request pending; waiting for device feedback");
         return;
       }
@@ -170,18 +181,6 @@ export function useSetValue() {
       queryClient.invalidateQueries({ queryKey: keys.events });
     },
   });
-}
-
-/** Restore now: write back the value an override would have restored (§5.1). */
-export function useRestoreOverride() {
-  const setValue = useSetValue();
-  return (timer: { device?: string | null; attr?: string | null; value?: unknown }) => {
-    if (!timer.device || !timer.attr || timer.value === undefined) return;
-    setValue.mutate({
-      target: { kind: "device", id: timer.device },
-      body: { [timer.attr]: timer.value as never },
-    });
-  };
 }
 
 function useRuleInvalidation() {

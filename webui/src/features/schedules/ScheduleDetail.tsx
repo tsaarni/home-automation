@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   useDeleteRule,
   useEvents,
@@ -13,15 +13,16 @@ import {
 import type { Rule } from "@/api/types";
 import { Badge, Button, Card, Dialog, Empty, Muted, Row, Stack, Switch } from "@/components/primitives";
 import { StatusHeader } from "@/components/StatusHeader";
-import { outcomeLabel } from "@/lib/reasons";
-import { buildRuns } from "@/lib/runs";
+import { outcomeLabel, writeSentence } from "@/lib/reasons";
+import { buildRuns, latestWrites } from "@/lib/runs";
 import { describeSchedule, describeTestReport, parseRule, unrepresentable } from "@/lib/schedule";
-import { History } from "./History";
 import { ScheduleBuilder } from "./ScheduleBuilder";
 
 export function ScheduleDetailScreen() {
   const { id = "" } = useParams();
-  const rules = useRules().data ?? [];
+  const rulesQuery = useRules();
+  const rules = rulesQuery.data ?? [];
+  const navigate = useNavigate();
   const rule = rules.find((item) => item.id === id);
   const timers = useTimers().data;
   const events = useEvents().data ?? [];
@@ -31,6 +32,7 @@ export function ScheduleDetailScreen() {
   const remove = useDeleteRule();
   const test = useTestRule();
   const [editing, setEditing] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(20);
   const [confirming, setConfirming] = useState(false);
 
   const runs = useMemo(() => buildRuns(events).filter((run) => run.rule === id), [events, id]);
@@ -40,12 +42,17 @@ export function ScheduleDetailScreen() {
     return (
       <div>
         <StatusHeader />
-        <Stack gap={3}>
-          <Empty>This schedule does not exist or has been deleted.</Empty>
-          <Link to="/schedules">
-            <Button variant="tonal" icon="arrow_back">
-              Back to schedules
-            </Button>
+        <Stack gap={16}>
+          <Empty>
+            {rulesQuery.isPending
+              ? "Loading schedule…"
+              : rulesQuery.isError
+                ? "Schedule could not be loaded."
+                : "This schedule does not exist or has been deleted."}
+            {rulesQuery.isError && <Button onClick={() => rulesQuery.refetch()}>Retry</Button>}
+          </Empty>
+          <Link className="text-link" to="/schedules">
+            Back to schedules
           </Link>
         </Stack>
       </div>
@@ -58,25 +65,24 @@ export function ScheduleDetailScreen() {
 
   return (
     <div>
-      <StatusHeader />
-      <Stack gap={4}>
+      <StatusHeader title={rule.name ?? rule.id} />
+      <Stack gap={20}>
         <Row>
-          <Link to="/schedules">
-            <Button size="small" variant="text" icon="arrow_back">
-              All schedules
-            </Button>
+          <Link className="text-link" to="/schedules">
+            All schedules
           </Link>
         </Row>
 
         <Card variant="elevated">
-          <Stack gap={3}>
+          <Stack gap={16}>
             <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--md-sys-color-on-surface)" }}>
               {parsed?.ok ? describeSchedule(parsed.schedule, names).sentence : (rule.name ?? rule.id)}
             </div>
-            <Row gap={2} wrap>
+            <Row gap={12} wrap>
               <Switch
                 checked={rule.enabled}
                 label={`${rule.enabled ? "Disable" : "Enable"} this schedule`}
+                disabled={toggle.isPending}
                 onChange={(next) => toggle.mutate({ id: rule.id, enabled: next })}
               />
               <Muted>{rule.enabled ? "Enabled" : "Disabled"}</Muted>
@@ -90,18 +96,33 @@ export function ScheduleDetailScreen() {
                   Next execution: {time.stamp(nextDue)} ({time.rel(nextDue)})
                 </Badge>
               ) : (
-                <Badge tone="muted">Not armed</Badge>
+                <Badge tone="muted">
+                  {!rule.enabled
+                    ? "Disabled"
+                    : rule.when.device
+                      ? "Waiting for device updates"
+                      : "Next execution unavailable"}
+                </Badge>
               )}
             </Row>
 
             {rule.description ? <Muted>{rule.description}</Muted> : null}
             {reasons.length > 0 ? (
-              <Badge tone="warn">Visual builder cannot show {reasons.join(", ")} — edit as raw JSON.</Badge>
+              <Badge tone="warn">
+                This schedule uses {reasons.join(", ")}. Edit its advanced configuration.
+              </Badge>
             ) : null}
 
-            <Row gap={2} wrap>
-              <Button variant="filled" icon="edit" onClick={() => setEditing(true)}>
-                Edit Schedule
+            <Row gap={12} wrap>
+              <Button
+                variant="filled"
+                icon="edit"
+                onClick={() => {
+                  if (reasons.length) navigate(`/advanced?tab=schedules&rule=${encodeURIComponent(rule.id)}`);
+                  else setEditing(true);
+                }}
+              >
+                {reasons.length ? "Edit advanced configuration" : "Edit schedule"}
               </Button>
               <Button
                 variant="tonal"
@@ -110,15 +131,19 @@ export function ScheduleDetailScreen() {
                 disabled={test.isPending}
                 title="Evaluate conditions and plan writes without applying them"
               >
-                Test Now
+                Simulate saved schedule
               </Button>
-              <Button variant="danger" icon="delete" onClick={() => setConfirming(true)}>
-                Delete
-              </Button>
+              <details>
+                <summary>More actions</summary>
+                <Button variant="text" icon="delete" onClick={() => setConfirming(true)}>
+                  Delete schedule
+                </Button>
+              </details>
             </Row>
 
+            <Muted>Simulation evaluates the saved schedule. No device changes.</Muted>
             {test.data ? (
-              <Row gap={2} wrap>
+              <Row gap={12} wrap>
                 <Badge tone={test.data.writes.length ? "accent" : "muted"}>Simulation Result</Badge>
                 <span>{describeTestReport(test.data, names)}</span>
               </Row>
@@ -129,15 +154,15 @@ export function ScheduleDetailScreen() {
 
         {pending.length > 0 ? (
           <Card variant="filled">
-            <Stack gap={2}>
-              <strong>Pending Condition Holds</strong>
+            <Stack gap={12}>
+              <strong>Pending actions</strong>
               {pending.map((timer) => (
-                <Row key={timer.id} gap={2} wrap>
+                <Row key={timer.id} gap={12} wrap>
                   <Badge tone="warn">{timer.kind === "revert" ? "Override" : "Hold"}</Badge>
                   <span>
                     {timer.kind === "revert"
                       ? `${names.device(timer.device)} ${names.attr(timer.device ?? "", timer.attr ?? "").toLowerCase()} goes back to ${names.value(timer.device, timer.attr, timer.value)}`
-                      : "Condition is holding; will act when hold duration completes"}
+                      : "Waiting before running; conditions will be checked"}
                   </span>
                   <Muted>
                     at {time.stamp(timer.due_at ?? "")} ({time.rel(timer.due_at)})
@@ -149,42 +174,57 @@ export function ScheduleDetailScreen() {
         ) : null}
 
         <Card variant="outlined">
-          <Stack gap={3}>
-            <strong>Weekly Execution History</strong>
-            <History runs={runs} />
-          </Stack>
-        </Card>
-
-        <Card variant="outlined">
-          <Stack gap={2}>
-            <strong>Recent Executions</strong>
-            {runs.slice(0, 20).map((run) => (
+          <Stack gap={12}>
+            <strong>Recent history</strong>
+            <Muted>
+              Showing {Math.min(historyLimit, runs.length)} of {runs.length} executions in the available log.
+              Older events may have expired.
+            </Muted>
+            {runs.slice(0, historyLimit).map((run) => (
               <div key={run.id}>
-                <Row gap={2} wrap>
-                  <Muted>{time.stamp(run.ts)}</Muted>
+                {(runs.indexOf(run) === 0 ||
+                  time.date(run.ts) !== time.date(runs[runs.indexOf(run) - 1].ts)) && (
+                  <h3 style={{ fontSize: 14 }}>{time.date(run.ts)}</h3>
+                )}
+                <Row gap={12} wrap>
+                  <Muted>{time.clock(run.ts)}</Muted>
                   <Badge tone={run.outcome === "ran" ? "ok" : run.outcome === "failed" ? "bad" : "warn"}>
                     {outcomeLabel(run.outcome)}
                   </Badge>
                   <span>
                     {run.writes.length
-                      ? run.writes
-                          .map(
-                            (write) =>
-                              `${names.device(write.device)} ${names.attr(write.device ?? "", write.attr ?? "").toLowerCase()} → ${names.value(write.device, write.attr, write.value)}`,
+                      ? latestWrites(run.writes)
+                          .map((w) =>
+                            writeSentence(
+                              {
+                                device: w.device ?? "",
+                                attr: w.attr ?? "",
+                                value: w.value,
+                                status: w.status ?? "applied",
+                                source: w.source,
+                                reason: w.reason,
+                              },
+                              names,
+                            ),
                           )
-                          .join(", ")
+                          .join("; ")
                       : (run.error ?? run.reason ?? "nothing to do")}
                   </span>
                 </Row>
               </div>
             ))}
+            {runs.length > historyLimit && (
+              <Button variant="text" onClick={() => setHistoryLimit((n) => n + 20)}>
+                Load more history
+              </Button>
+            )}
             {runs.length === 0 ? <Muted>No runs recorded in current log window.</Muted> : null}
           </Stack>
         </Card>
 
         <Card variant="filled">
           <details>
-            <summary style={{ cursor: "pointer", fontWeight: 500 }}>Inspect Raw JSON Document</summary>
+            <summary style={{ cursor: "pointer", fontWeight: 500 }}>Configuration</summary>
             <pre style={{ overflowX: "auto", fontSize: 12, marginTop: 8 }}>
               {JSON.stringify(rule, null, 2)}
             </pre>
@@ -197,18 +237,26 @@ export function ScheduleDetailScreen() {
       {confirming ? (
         <Dialog
           title="Delete Schedule?"
-          onClose={() => setConfirming(false)}
+          beforeClose={() => !remove.isPending}
+          onClose={() => {
+            if (!remove.isPending) setConfirming(false);
+          }}
           footer={
             <>
-              <Button variant="text" onClick={() => setConfirming(false)}>
+              <Button variant="text" disabled={remove.isPending} onClick={() => setConfirming(false)}>
                 Keep Schedule
               </Button>
               <Button
                 variant="danger"
+                disabled={remove.isPending}
                 icon="delete"
                 onClick={() => {
-                  remove.mutate(rule.id);
-                  setConfirming(false);
+                  remove.mutate(rule.id, {
+                    onSuccess: () => {
+                      setConfirming(false);
+                      navigate("/schedules");
+                    },
+                  });
                 }}
               >
                 Delete Permanently
@@ -216,8 +264,15 @@ export function ScheduleDetailScreen() {
             </>
           }
         >
+          {remove.error && (
+            <p role="alert" className="form-error">
+              Could not delete: {remove.error.message}
+            </p>
+          )}
           <div>{rule.name ?? rule.id}</div>
-          <Muted>{nextDue ? `Next scheduled execution was ${time.stamp(nextDue)}` : "Schedule is currently idle"}</Muted>
+          <Muted>
+            {nextDue ? `Next scheduled execution was ${time.stamp(nextDue)}` : "Schedule is currently idle"}
+          </Muted>
           {rule.once ? <Muted>This is a one-shot schedule that deletes itself on run.</Muted> : null}
         </Dialog>
       ) : null}

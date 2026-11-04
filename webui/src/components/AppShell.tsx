@@ -30,7 +30,15 @@ export function AppShell() {
         }}
         className="hide-mobile"
       >
-        <div style={{ marginBottom: "32px", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+        <div
+          style={{
+            marginBottom: "32px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
           <div
             style={{
               width: "44px",
@@ -45,12 +53,27 @@ export function AppShell() {
           >
             <Icon name="nest_thermostat" />
           </div>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--md-sys-color-on-surface-variant)", letterSpacing: "0.5px" }}>
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "var(--md-sys-color-on-surface-variant)",
+              letterSpacing: "0.5px",
+            }}
+          >
             HOME
           </span>
         </div>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%", alignItems: "center" }}>
+        <nav
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            width: "100%",
+            alignItems: "center",
+          }}
+        >
           {destinations.map((d) => (
             <NavLink
               key={d.to}

@@ -50,12 +50,13 @@ export function makeNames(devices: Device[], rules: Rule[], groups: Group[]): Na
       return byDevice.get(deviceId)?.attributes[attribute]?.unit ?? null;
     },
     value: (deviceId, attribute, value) => {
+      if (value === undefined || value === null) return "Unknown";
       const spec = deviceId && attribute ? byDevice.get(deviceId)?.attributes[attribute] : undefined;
       if (spec) {
         if (attribute === "mode" && spec.enum && MODE_LABELS[String(value)])
           return MODE_LABELS[String(value)];
         if (spec.enum?.length === 2 && spec.enum.includes("ON") && spec.enum.includes("OFF")) {
-          return value === "ON" ? "on" : "off";
+          return value === "ON" ? "on" : value === "OFF" ? "off" : String(value);
         }
         const unit = displayUnit(spec.unit);
         if (typeof value === "number") {

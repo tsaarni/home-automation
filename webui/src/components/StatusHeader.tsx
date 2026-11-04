@@ -1,12 +1,34 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router";
 import { useEvents, useHome, useReady, useRules, useStateSnapshot, useTime, useTimers } from "@/api/queries";
 import { humanizeWords } from "@/lib/reasons";
 import { buildRuns, expectedNow } from "@/lib/runs";
 import { setSearch, useSearchQuery } from "@/lib/search";
 import { useTheme } from "@/theme/theme";
-import { Badge, Button, Dialog, Icon, IconButton, Muted, Row, Stack, TextField } from "./primitives";
+import { Badge, Button, Dialog, Icon, Muted, Row, Select, Stack, TextField } from "./primitives";
 
-export function StatusHeader() {
+export function StatusHeader({ title }: { title?: string }) {
+  const location = useLocation();
+  const page =
+    title ??
+    (location.pathname.startsWith("/schedules")
+      ? "Schedules"
+      : location.pathname === "/activity"
+        ? "Activity"
+        : location.pathname === "/advanced"
+          ? "Advanced"
+          : "Home");
+  const searchLabel =
+    location.pathname === "/"
+      ? "Search rooms, devices and controls"
+      : location.pathname === "/schedules"
+        ? "Search schedules"
+        : location.pathname === "/activity"
+          ? "Search activity"
+          : null;
+  useEffect(() => {
+    document.title = `${page} · Home automation`;
+  }, [page]);
   const ready = useReady();
   const events = useEvents();
   const timers = useTimers();
@@ -20,7 +42,6 @@ export function StatusHeader() {
 
   const state = ready.data;
   const freshness = ready.dataUpdatedAt ? Date.now() - ready.dataUpdatedAt : Number.POSITIVE_INFINITY;
-  const isLive = !ready.isError && freshness < 15000;
   const isStale = !ready.isError && freshness >= 15000;
 
   const problems = useMemo(() => {
@@ -34,9 +55,19 @@ export function StatusHeader() {
         found.push(`${event.rule ?? "A schedule"} failed: ${event.error ?? "error"}`);
       if (event.type === "mqtt_value_error")
         found.push(`A device sent unreadable telemetry (${event.device ?? "?"}.${event.attr ?? "?"})`);
-      if (event.type === "rule_depth_limit")
-        found.push("A cascade of schedules was stopped (depth limit)");
+      if (event.type === "rule_depth_limit") found.push("A cascade of schedules was stopped (depth limit)");
     }
+    const requests = new Set<string>();
+    for (const thing of home.things)
+      for (const reading of thing.readings) {
+        if (reading.pending || !["failed", "error", "unconfirmed"].includes(reading.outcome ?? "")) continue;
+        const key = String(reading.result?.request_id ?? `${thing.id}:${reading.attr}`);
+        if (requests.has(key)) continue;
+        requests.add(key);
+        found.push(
+          `${thing.name}: ${reading.outcome === "unconfirmed" ? "request outcome uncertain; check reported state" : "device request failed"}${reading.result?.reason ? ` (${humanizeWords(reading.result.reason)})` : ""}`,
+        );
+      }
     const runs = buildRuns(recent.filter((event) => event.type !== "state"));
     for (const flag of expectedNow(runs, snapshot.data ?? {}, home)) {
       const thing = home.byDevice.get(flag.device)?.name ?? flag.device;
@@ -49,89 +80,76 @@ export function StatusHeader() {
 
   const overrides = timers.data?.timers.filter((timer) => timer.kind === "revert").length ?? 0;
 
-  const cycleTheme = () => {
-    setTheme(theme === "system" ? "dark" : theme === "dark" ? "light" : "system");
-  };
-
-  const themeIcon = theme === "dark" ? "dark_mode" : theme === "light" ? "light_mode" : "brightness_auto";
-
   return (
-    <header
-      style={{
-        backgroundColor: "var(--md-sys-color-surface-container)",
-        borderRadius: "24px",
-        padding: "16px 20px",
-        marginBottom: "24px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div
-            style={{
-              width: "10px",
-              height: "10px",
-              borderRadius: "9999px",
-              backgroundColor: isLive ? "var(--md-sys-color-success)" : isStale ? "var(--md-sys-color-warning)" : "var(--md-sys-color-error)",
-              boxShadow: `0 0 0 3px ${isLive ? "var(--md-sys-color-success-container)" : isStale ? "var(--md-sys-color-warning-container)" : "var(--md-sys-color-error-container)"}`,
-            }}
-            title={ready.isError ? "Backend unreachable" : isLive ? "Live updates" : "Stale connection"}
-          />
-          <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "var(--md-sys-color-on-surface)" }}>Home</h1>
-        </div>
-
-        <Row gap={8} wrap style={{ flex: 1, justifyContent: "center" }}>
-          <Badge tone={state?.mqtt_connected ? "ok" : state?.mqtt_enabled ? "bad" : "muted"}>
-            <Icon name={state?.mqtt_connected ? "wifi" : "wifi_off"} />
-            <span>{state?.mqtt_connected ? "MQTT up" : state?.mqtt_enabled ? "MQTT down" : "MQTT off"}</span>
-          </Badge>
-
-          {state?.dry_run ? (
-            <Badge tone="warn">
-              <Icon name="science" />
-              <span>Dry run</span>
-            </Badge>
-          ) : null}
-
-          {overrides > 0 ? (
-            <Badge tone="accent">
-              <Icon name="timer" />
-              <span>{overrides} override{overrides === 1 ? "" : "s"}</span>
-            </Badge>
-          ) : null}
-
-          {problems.length > 0 ? (
-            <Button size="small" variant="danger" icon="warning" onClick={() => setProblemsOpen(true)}>
-              {problems.length} issue{problems.length === 1 ? "" : "s"}
+    <header className="form-section" style={{ marginBottom: 24 }}>
+      <Row justify="space-between" wrap>
+        <h1 style={{ margin: 0, fontSize: 26 }}>{page}</h1>
+        <Row wrap>
+          <span role="status">
+            {ready.isPending
+              ? "Connecting…"
+              : ready.isError
+                ? "Backend unavailable"
+                : isStale
+                  ? "Connection stale"
+                  : state?.mqtt_connected
+                    ? "Connected"
+                    : state?.mqtt_enabled
+                      ? "Device connection unavailable"
+                      : "Backend connected"}
+          </span>
+          {state?.dry_run && <Badge tone="warn">Dry run — device commands simulated</Badge>}
+          {problems.length > 0 && (
+            <Button variant="tonal" onClick={() => setProblemsOpen(true)}>
+              {problems.length} issues
             </Button>
-          ) : (
-            <Badge tone="ok">
-              <Icon name="check_circle" />
-              <span>All systems normal</span>
-            </Badge>
           )}
         </Row>
-
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <IconButton icon={themeIcon} onClick={cycleTheme} title={`Theme: ${theme}`} />
-        </div>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: "240px" }}>
-          <TextField
-            value={query}
-            onChange={setSearch}
-            placeholder="Search rooms, things, controls, schedules…"
-            leadingIcon="search"
+      </Row>
+      <details>
+        <summary>Connection and display settings</summary>
+        <Stack gap={12}>
+          <Muted>
+            {state
+              ? `${state.devices} devices · ${rules.data?.length ?? "…"} schedules · ${time.zone}`
+              : "Waiting for system status…"}
+          </Muted>
+          <Muted>
+            {state
+              ? state.mqtt_connected
+                ? "MQTT connected"
+                : state.mqtt_enabled
+                  ? "MQTT disconnected"
+                  : "MQTT disabled"
+              : "Connection unknown"}
+          </Muted>
+          {overrides > 0 && (
+            <a className="text-link" href="/#upcoming">
+              {overrides} temporary changes — view expiry times
+            </a>
+          )}
+          <Select
+            label="Theme"
+            value={theme}
+            onChange={(v) => setTheme(v as typeof theme)}
+            options={[
+              { value: "system", label: "System" },
+              { value: "light", label: "Light" },
+              { value: "dark", label: "Dark" },
+            ]}
           />
-        </div>
-        <Muted>
-          {state?.devices ?? 0} devices · {rules.data?.length ?? 0} schedules · {time.zone}
-        </Muted>
-      </div>
+        </Stack>
+      </details>
+      {searchLabel && (
+        <Row>
+          <TextField label={searchLabel} value={query} onChange={setSearch} leadingIcon="search" />
+          {query && (
+            <Button variant="text" onClick={() => setSearch("")}>
+              Clear
+            </Button>
+          )}
+        </Row>
+      )}
 
       {problemsOpen ? (
         <Dialog
@@ -144,6 +162,9 @@ export function StatusHeader() {
           }
         >
           <Stack gap={8}>
+            <a className="text-link" href="/">
+              View device controls and reported state
+            </a>
             {problems.length ? (
               problems.map((p) => (
                 <div

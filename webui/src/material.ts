@@ -46,7 +46,14 @@ declare global {
       "md-icon-button": MdElementProps;
       "md-switch": MdElementProps & { selected?: boolean; icons?: boolean; showOnlySelectedIcon?: boolean };
       "md-checkbox": MdElementProps & { checked?: boolean };
-      "md-outlined-text-field": MdElementProps & { label?: string; placeholder?: string; type?: string; min?: number; max?: number; step?: number };
+      "md-outlined-text-field": MdElementProps & {
+        label?: string;
+        placeholder?: string;
+        type?: string;
+        min?: number;
+        max?: number;
+        step?: number;
+      };
       "md-outlined-select": MdElementProps & { label?: string };
       "md-select-option": MdElementProps & { headline?: string };
       "md-chip-set": MdElementProps;
@@ -55,7 +62,11 @@ declare global {
       "md-dialog": MdElementProps & { open?: boolean; type?: string };
       "md-divider": MdElementProps & { inset?: boolean };
       "md-list": MdElementProps;
-      "md-list-item": MdElementProps & { headline?: string; supportingText?: string; trailingSupportingText?: string };
+      "md-list-item": MdElementProps & {
+        headline?: string;
+        supportingText?: string;
+        trailingSupportingText?: string;
+      };
       "md-icon": MdElementProps;
       "md-elevation": MdElementProps;
       "md-tabs": MdElementProps & { activeTabIndex?: number };
