@@ -1,14 +1,16 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useDevices, useGroups, useNames, useRules, useSaveRule } from "@/api/queries";
-import type { Attribute, Device, Rule, Scalar, Term } from "@/api/types";
+import type { Attribute, Device, Group, Rule, Scalar, Term } from "@/api/types";
 import { Button, Dialog, Muted, Select, Stack, TextField, Toggle } from "@/components/primitives";
+import { GroupEditor } from "@/features/groups/GroupsScreen";
 import { attrLabel } from "@/home/derive";
 import { durationSeconds } from "@/lib/duration";
 import {
   applySchedule,
   type Clause,
   clauseFor,
+  customRuleName,
   DAYS,
   describeSchedule,
   emptySchedule,
@@ -25,14 +27,14 @@ type TriggerKind = "at" | "sun" | "state" | "every";
 function kindOf(trigger: Trigger): TriggerKind {
   return trigger.kind === "at" && trigger.solar ? "sun" : trigger.kind;
 }
-function initial(rule: Rule | null) {
+function initial(rule: Rule | null, names: ReturnType<typeof useNames>) {
   const parsed = rule ? parseRule(rule) : null;
   return {
     schedule: parsed?.ok ? parsed.schedule : { ...emptySchedule(), then: [clauseFor("device", "", "", "")] },
-    name: rule?.name ?? "",
+    name: rule ? (customRuleName(rule, names) ?? "") : "",
     description: rule?.description ?? "",
     enabled: rule?.enabled ?? true,
-    once: rule?.once ?? false,
+    once: rule?.once ?? true,
     priority: String(rule?.priority ?? 0),
     rateLimit: String(rule?.rate_limit ?? 1),
   };
@@ -46,9 +48,10 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
   const groups = groupQuery.data ?? [];
   const names = useNames();
   const save = useSaveRule();
-  const [draft, setDraft] = useState(() => initial(rule));
-  const original = useRef(JSON.stringify(initial(rule)));
+  const [draft, setDraft] = useState(() => initial(rule, names));
+  const original = useRef(JSON.stringify(initial(rule, names)));
   const creationId = useRef<string | null>(null);
+  const [editingGroup, setEditingGroup] = useState<Group | undefined>();
   const [attempted, setAttempted] = useState(false);
   const [customDays, setCustomDays] = useState(
     () => draft.schedule.when.kind === "at" && repeatFor(draft.schedule.when.days) === "custom",
@@ -67,7 +70,7 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
     errors.priority = "Enter a whole-number priority.";
   if (draft.rateLimit === "" || !Number.isFinite(Number(draft.rateLimit)) || Number(draft.rateLimit) < 0)
     errors.rate = "Enter a minimum interval of zero or more seconds.";
-  const description = describeSchedule(draft.schedule, names).sentence;
+  const description = describeSchedule({ ...draft.schedule, once: draft.once }, names).sentence;
   const update = (patch: Partial<typeof draft>) => setDraft((d) => ({ ...d, ...patch }));
   const schedule = (patch: Partial<typeof draft.schedule>) =>
     update({ schedule: { ...draft.schedule, ...patch } });
@@ -77,7 +80,7 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
   const close = () => {
     if (closeAllowed()) onClose();
   };
-  useUnsavedChanges(dirty && !save.isSuccess);
+  useUnsavedChanges((dirty && !save.isSuccess) || !!editingGroup);
   const submit = () => {
     if (save.isPending) return;
     setAttempted(true);
@@ -113,7 +116,7 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
     save.mutate(
       applySchedule(base, draft.schedule, {
         id,
-        name: draft.name || description,
+        name: draft.name.trim() || null,
         description: draft.description || undefined,
         enabled: draft.enabled,
         once: draft.once,
@@ -141,15 +144,16 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
     draft.name ||
       draft.description ||
       !draft.enabled ||
-      draft.once ||
       Number(draft.priority) ||
       Number(draft.rateLimit) !== 1 ||
       draft.schedule.hold,
   );
+  if (editingGroup)
+    return <GroupEditor embedded group={editingGroup} onClose={() => setEditingGroup(undefined)} />;
   return (
     <Dialog
       wide
-      title={rule ? `Edit: ${rule.name ?? rule.id}` : "New schedule"}
+      title={rule ? `Edit: ${names.rule(rule.id)}` : "New schedule"}
       onClose={onClose}
       beforeClose={closeAllowed}
       footer={
@@ -205,6 +209,21 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
           )}
           <section className="form-section" data-field="trigger">
             <h2>When</h2>
+            <Select
+              label="Run"
+              value={draft.once ? "once" : "repeat"}
+              onChange={(value) => {
+                update({ once: value === "once" });
+                if (value === "once" && draft.schedule.when.kind === "at") {
+                  setCustomDays(false);
+                  schedule({ when: { ...draft.schedule.when, days: [] } });
+                }
+              }}
+              options={[
+                { value: "once", label: "Once — delete after running" },
+                { value: "repeat", label: "Repeat" },
+              ]}
+            />
             <Select
               label="Trigger"
               value={kindOf(draft.schedule.when)}
@@ -268,17 +287,24 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
                     }}
                   />
                 )}
-                <div data-field="repeat">
-                  <Repeat
-                    days={draft.schedule.when.days}
-                    custom={customDays}
-                    onChange={(days, custom) => {
-                      setCustomDays(custom);
-                      if (draft.schedule.when.kind === "at") trigger({ ...draft.schedule.when, days });
-                    }}
-                  />
-                  {problem("repeat")}
-                </div>
+                {draft.once && !draft.schedule.when.days.length ? (
+                  <Muted>
+                    Runs at the next occurrence of this time, today or tomorrow, in the house timezone. The
+                    schedule deletes itself after running.
+                  </Muted>
+                ) : (
+                  <div data-field="repeat">
+                    <Repeat
+                      days={draft.schedule.when.days}
+                      custom={customDays}
+                      onChange={(days, custom) => {
+                        setCustomDays(custom);
+                        if (draft.schedule.when.kind === "at") trigger({ ...draft.schedule.when, days });
+                      }}
+                    />
+                    {problem("repeat")}
+                  </div>
+                )}
               </>
             ) : draft.schedule.when.kind === "every" ? (
               <DurationField
@@ -343,6 +369,15 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
                       })),
                     ]}
                   />
+                  {c.target.kind === "group" && groups.find((group) => group.id === c.target.id) && (
+                    <Button
+                      variant="text"
+                      icon="edit"
+                      onClick={() => setEditingGroup(groups.find((group) => group.id === c.target.id))}
+                    >
+                      View/edit group
+                    </Button>
+                  )}
                   <div className="form-grid">
                     <Select
                       label="Control"
@@ -480,12 +515,7 @@ export function ScheduleBuilder({ rule, onClose }: { rule: Rule | null; onClose:
                 onChange={(description) => update({ description })}
               />
               <Toggle label="Enabled" checked={draft.enabled} onChange={(enabled) => update({ enabled })} />
-              <Toggle
-                label="Delete after first run"
-                checked={draft.once}
-                onChange={(once) => update({ once })}
-              />
-              <Muted>This deletes the schedule after it fires.</Muted>
+              <Muted>Leave the name empty to show a summary derived from the schedule.</Muted>
               <div className="form-grid">
                 <div data-field="priority">
                   <TextField

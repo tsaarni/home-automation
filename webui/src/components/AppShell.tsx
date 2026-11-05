@@ -4,6 +4,7 @@ import { Icon } from "./primitives";
 
 const destinations = [
   { to: "/", label: "Home", icon: "home" },
+  { to: "/devices", label: "Devices", icon: "devices" },
   { to: "/schedules", label: "Schedules", icon: "schedule" },
   { to: "/activity", label: "Activity", icon: "history" },
   { to: "/advanced", label: "Advanced", icon: "settings" },

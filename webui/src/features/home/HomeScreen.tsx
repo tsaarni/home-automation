@@ -81,6 +81,11 @@ export function HomeScreen() {
           </div>
         ) : null}
 
+        <Row wrap>
+          <Link className="text-link" to="/schedules?new=1">
+            New timer
+          </Link>
+        </Row>
         <UpcomingSection compact />
 
         <Muted>{visible.reduce((n, r) => n + r.things.length, 0)} devices</Muted>
@@ -291,7 +296,7 @@ export function UpcomingSection({ compact = false }: { compact?: boolean }) {
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "14px" }}>
                     <Link className="text-link" to={`/schedules/${encodeURIComponent(item.rule.id)}`}>
-                      <strong>{item.rule.name ?? item.rule.id}</strong>
+                      <strong>{names.rule(item.rule.id)}</strong>
                     </Link>
                     <Muted>{describeTriggerFor(item.rule, names)}</Muted>
                   </div>
@@ -316,5 +321,5 @@ function describeTriggerFor(
   names: Parameters<typeof describeTrigger>[1],
 ): string {
   const parsed = parseRule(rule);
-  return parsed.ok ? describeTrigger(parsed.schedule.when, names) : "custom schedule";
+  return parsed.ok ? describeTrigger(parsed.schedule.when, names, rule.once) : "custom schedule";
 }

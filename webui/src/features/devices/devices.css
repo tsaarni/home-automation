@@ -1,0 +1,43 @@
+.device-navigation {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.device-navigation a {
+  padding: 12px 4px;
+  color: var(--md-sys-color-on-surface-variant);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+
+.device-navigation a[aria-current="page"] {
+  color: var(--md-sys-color-primary);
+  border-bottom-color: currentColor;
+  font-weight: 700;
+}
+
+.group-member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  cursor: pointer;
+}
+
+.group-member input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--md-sys-color-primary);
+}
+
+.group-member span {
+  overflow-wrap: anywhere;
+}
+
+.group-members {
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}

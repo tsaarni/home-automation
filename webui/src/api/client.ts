@@ -159,6 +159,11 @@ export const api = {
       body: JSON.stringify(doc),
     }) as Promise<Device>,
 
+  deleteGroup: (id: string) =>
+    request(`/api/v1/groups/${encodeURIComponent(id)}`, z.looseObject({ deleted: z.string() }), {
+      method: "DELETE",
+    }),
+
   putGroup: (id: string, doc: unknown) =>
     request(`/api/v1/groups/${encodeURIComponent(id)}`, groupSchema, {
       method: "PUT",

@@ -264,6 +264,11 @@ md-dialog.dialog-compact {
 }
 md-dialog [slot="actions"] {
   flex-wrap: wrap;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+/* Modal actions own the bottom edge; the underlying navigation is inactive. */
+body:has(md-dialog[open]) nav.show-mobile {
+  visibility: hidden;
 }
 .table-region {
   overflow: auto;

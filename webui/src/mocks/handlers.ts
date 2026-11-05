@@ -7,7 +7,7 @@
  * do not implement must fail loudly instead of reaching a real house through the dev proxy.
  */
 import { HttpResponse, http } from "msw";
-import type { Device } from "@/api/types";
+import type { Device, Rule } from "@/api/types";
 import devicesFixture from "./fixtures/devices.json";
 import eventsFixture from "./fixtures/events.json";
 import groupsFixture from "./fixtures/groups.json";
@@ -21,12 +21,19 @@ const base = String(import.meta.env.VITE_API_BASE ?? "/api-proxy");
 type Json = Record<string, unknown>;
 
 const devices = [...JSON.parse(JSON.stringify(devicesFixture)), ...structuredClone(gatewayDevices)] as Json[];
+const groups = structuredClone(groupsFixture) as Json[];
 const rules = JSON.parse(JSON.stringify(rulesFixture)) as Json[];
 const events = [...(eventsFixture as Json[])];
 const timers = JSON.parse(JSON.stringify(timersFixture)) as {
   timers: Json[];
   next_due: Record<string, string>;
 };
+
+function groupReferences(id: unknown): string[] {
+  return (rules as unknown as Rule[])
+    .filter((rule) => rule.then.some((action) => (action.set?.group ?? action.set_curve?.group) === id))
+    .map((rule) => rule.id);
+}
 
 function record(event: Json): void {
   events.push({ ts: new Date().toISOString(), ...event });
@@ -89,7 +96,24 @@ export const handlers = [
     HttpResponse.json(Object.fromEntries(devices.map((device) => [device.id, (device.state ?? {}) as Json]))),
   ),
   http.get(`${base}/api/v1/devices`, () => HttpResponse.json(devices)),
-  http.get(`${base}/api/v1/groups`, () => HttpResponse.json(groupsFixture)),
+  http.get(`${base}/api/v1/groups`, () =>
+    HttpResponse.json(groups.map((group) => ({ ...group, referenced_by: groupReferences(group.id) }))),
+  ),
+  http.put(`${base}/api/v1/groups/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Json;
+    const index = groups.findIndex((item) => item.id === params.id);
+    if (index >= 0) groups[index] = body;
+    else groups.push(body);
+    return HttpResponse.json(body);
+  }),
+  http.delete(`${base}/api/v1/groups/:id`, ({ params }) => {
+    const index = groups.findIndex((group) => group.id === params.id);
+    if (index < 0) return HttpResponse.json({ detail: "Unknown group" }, { status: 404 });
+    const referenced = groupReferences(params.id).length > 0;
+    if (referenced) return HttpResponse.json({ detail: "Group is used by schedules" }, { status: 422 });
+    groups.splice(index, 1);
+    return HttpResponse.json({ deleted: params.id });
+  }),
   http.get(`${base}/api/v1/rules`, () => HttpResponse.json(rules)),
   http.get(`${base}/api/v1/timers`, () => HttpResponse.json(timers)),
   // Keep the stream open; polling supplies staged events in mock mode.

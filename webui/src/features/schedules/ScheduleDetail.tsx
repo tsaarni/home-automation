@@ -65,7 +65,7 @@ export function ScheduleDetailScreen() {
 
   return (
     <div>
-      <StatusHeader title={rule.name ?? rule.id} />
+      <StatusHeader title={names.rule(rule.id)} />
       <Stack gap={20}>
         <Row>
           <Link className="text-link" to="/schedules">
@@ -76,7 +76,7 @@ export function ScheduleDetailScreen() {
         <Card variant="elevated">
           <Stack gap={16}>
             <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--md-sys-color-on-surface)" }}>
-              {parsed?.ok ? describeSchedule(parsed.schedule, names).sentence : (rule.name ?? rule.id)}
+              {parsed?.ok ? describeSchedule(parsed.schedule, names).sentence : names.rule(rule.id)}
             </div>
             <Row gap={12} wrap>
               <Switch
@@ -133,12 +133,9 @@ export function ScheduleDetailScreen() {
               >
                 Simulate saved schedule
               </Button>
-              <details>
-                <summary>More actions</summary>
-                <Button variant="text" icon="delete" onClick={() => setConfirming(true)}>
-                  Delete schedule
-                </Button>
-              </details>
+              <Button variant="text" icon="delete" onClick={() => setConfirming(true)}>
+                Delete schedule
+              </Button>
             </Row>
 
             <Muted>Simulation evaluates the saved schedule. No device changes.</Muted>
@@ -269,7 +266,7 @@ export function ScheduleDetailScreen() {
               Could not delete: {remove.error.message}
             </p>
           )}
-          <div>{rule.name ?? rule.id}</div>
+          <div>{names.rule(rule.id)}</div>
           <Muted>
             {nextDue ? `Next scheduled execution was ${time.stamp(nextDue)}` : "Schedule is currently idle"}
           </Muted>

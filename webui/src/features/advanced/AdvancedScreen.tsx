@@ -70,8 +70,8 @@ export function AdvancedScreen() {
               })
             }
             options={[
-              { value: "schedules", label: "Schedules" },
-              { value: "devices", label: "Devices and groups" },
+              { value: "schedules", label: "Schedule JSON" },
+              { value: "devices", label: "Device and group JSON" },
             ]}
           />
         )}

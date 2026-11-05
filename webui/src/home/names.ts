@@ -1,6 +1,7 @@
 import type { Device, Group, Rule } from "@/api/types";
 import { ATTR_LABELS, humanize, things } from "@/home/model";
 import { displayUnit, formatNumber, formatValue } from "@/lib/format";
+import { customRuleName, describeRule } from "@/lib/schedule";
 
 /** Z-Wave thermostat mode values (the enum the devices actually report). */
 const MODE_LABELS: Record<string, string> = { "0": "off", "1": "heat", "2": "cool", "11": "auto" };
@@ -29,10 +30,15 @@ export function makeNames(devices: Device[], rules: Rule[], groups: Group[]): Na
     return humanize(id);
   };
 
-  return {
+  const specFor = (id: string, attribute: string) => {
+    const deviceId = byDevice.has(id) ? id : byGroup.get(id)?.members[0];
+    return deviceId ? byDevice.get(deviceId)?.attributes[attribute] : undefined;
+  };
+  const names: Names = {
     rule: (id) => {
       if (!id) return "a schedule";
-      return byRule.get(id)?.name ?? humanize(id);
+      const rule = byRule.get(id);
+      return rule ? (customRuleName(rule, names) ?? describeRule(rule, names)) : humanize(id);
     },
     device,
     group: (id) => {
@@ -47,11 +53,11 @@ export function makeNames(devices: Device[], rules: Rule[], groups: Group[]): Na
     },
     unit: (deviceId, attribute) => {
       if (!deviceId || !attribute) return null;
-      return byDevice.get(deviceId)?.attributes[attribute]?.unit ?? null;
+      return specFor(deviceId, attribute)?.unit ?? null;
     },
     value: (deviceId, attribute, value) => {
       if (value === undefined || value === null) return "Unknown";
-      const spec = deviceId && attribute ? byDevice.get(deviceId)?.attributes[attribute] : undefined;
+      const spec = deviceId && attribute ? specFor(deviceId, attribute) : undefined;
       if (spec) {
         if (attribute === "mode" && spec.enum && MODE_LABELS[String(value)])
           return MODE_LABELS[String(value)];
@@ -68,4 +74,5 @@ export function makeNames(devices: Device[], rules: Rule[], groups: Group[]): Na
       return formatValue(value, null);
     },
   };
+  return names;
 }

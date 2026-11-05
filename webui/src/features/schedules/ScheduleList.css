@@ -1,0 +1,29 @@
+.schedule-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.schedule-filters md-outlined-select {
+  white-space: nowrap;
+}
+
+.schedule-row {
+  align-items: center;
+}
+
+@media (max-width: 699px) {
+  .schedule-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schedule-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .schedule-row > :last-child {
+    align-self: flex-end;
+  }
+}

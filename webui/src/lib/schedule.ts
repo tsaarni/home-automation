@@ -55,6 +55,7 @@ export interface Clause {
 }
 
 export interface ParsedSchedule {
+  once?: boolean;
   when: Trigger;
   onlyIf: { terms: Term[] } | null;
   /** "stays that way for" */
@@ -115,6 +116,7 @@ export function parseRule(rule: Rule): ParseResult {
   return {
     ok: true,
     schedule: {
+      once: rule.once,
       when: trigger,
       onlyIf: rule.if?.all?.length ? { terms: rule.if.all } : null,
       hold: rule.for ?? null,
@@ -223,14 +225,18 @@ const OP_WORDS: Record<string, string> = {
   le: "is at most",
 };
 
-export function describeTrigger(trigger: Trigger, names: Names): string {
+export function describeTrigger(trigger: Trigger, names: Names, once = false): string {
   switch (trigger.kind) {
     case "at": {
       const offset = trigger.offset ? ` ${offsetLabel(trigger.offset)}` : "";
       if (trigger.solar)
         return `At ${solarLabel(trigger.at)}${offset}${trigger.days.length && trigger.days.length !== 7 ? ` on ${dayList(trigger.days)}` : ""}`;
       const everyDay = trigger.days.length === 0 || trigger.days.length === 7;
-      return everyDay ? `Every day at ${trigger.at}` : `At ${trigger.at} on ${dayList(trigger.days)}`;
+      return everyDay
+        ? once
+          ? `Once at ${trigger.at}`
+          : `Every day at ${trigger.at}`
+        : `At ${trigger.at} on ${dayList(trigger.days)}`;
     }
     case "state": {
       const thing = names.device(trigger.device);
@@ -288,14 +294,8 @@ export interface ClauseDescription {
 export function describeClause(clause: Clause, names: Names): ClauseDescription {
   const targetLabel =
     clause.target.kind === "device" ? names.device(clause.target.id) : names.group(clause.target.id);
-  const label = names
-    .attr(clause.target.kind === "device" ? clause.target.id : "", clause.attr)
-    .toLowerCase();
-  const valueText = names.value(
-    clause.target.kind === "device" ? clause.target.id : null,
-    clause.attr,
-    clause.value,
-  );
+  const label = names.attr(clause.target.id, clause.attr).toLowerCase();
+  const valueText = names.value(clause.target.id, clause.attr, clause.value);
   const switchy = clause.value === "ON" || clause.value === "OFF" || typeof clause.value === "boolean";
   const verb = switchy ? (clause.value === "ON" || clause.value === true ? "turn on" : "turn off") : "set";
   return {
@@ -321,7 +321,7 @@ export interface Description {
 }
 
 export function describeSchedule(schedule: ParsedSchedule, names: Names): Description {
-  const when = describeTrigger(schedule.when, names);
+  const when = describeTrigger(schedule.when, names, schedule.once);
   const actions = schedule.then.map((clause) => describeClause(clause, names));
   const onlyIf = schedule.onlyIf?.terms.length
     ? schedule.onlyIf.terms.map((term) => describeTerm(term, names)).join(" and ")
@@ -337,6 +337,18 @@ export function describeSchedule(schedule: ParsedSchedule, names: Names): Descri
     .join(", then ");
   const sentence = `${when} ${actionText}${onlyIf ? ` if ${onlyIf}` : ""}${hold ? ` after waiting ${hold}` : ""}`;
   return { when, onlyIf, hold, actions, sentence };
+}
+
+/** Older UI versions stored the generated sentence in the optional name. */
+export function customRuleName(rule: Rule, names: Names): string | null {
+  const parsed = parseRule(rule);
+  if (!rule.name?.trim()) return null;
+  if (
+    parsed.ok &&
+    [false, true].some((once) => rule.name === describeSchedule({ ...parsed.schedule, once }, names).sentence)
+  )
+    return null;
+  return rule.name;
 }
 
 export function describeRule(rule: Rule, names: Names): string {

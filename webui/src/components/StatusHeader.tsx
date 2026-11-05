@@ -23,9 +23,13 @@ export function StatusHeader({ title }: { title?: string }) {
       ? "Search rooms, devices and controls"
       : location.pathname === "/schedules"
         ? "Search schedules"
-        : location.pathname === "/activity"
-          ? "Search activity"
-          : null;
+        : location.pathname.startsWith("/devices")
+          ? location.pathname === "/devices/groups"
+            ? "Search groups"
+            : "Search devices"
+          : location.pathname === "/activity"
+            ? "Search activity"
+            : null;
   useEffect(() => {
     document.title = `${page} · Home automation`;
   }, [page]);

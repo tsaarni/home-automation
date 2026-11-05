@@ -1,40 +1,88 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { useEvents, useHome, useNames, useRules, useTime, useTimers, useToggleRule } from "@/api/queries";
+import {
+  useDevices,
+  useEvents,
+  useGroups,
+  useHome,
+  useNames,
+  useRules,
+  useTime,
+  useTimers,
+  useToggleRule,
+} from "@/api/queries";
 import type { Rule } from "@/api/types";
 import { Badge, Button, Card, Empty, Icon, Muted, Row, Select, Stack, Switch } from "@/components/primitives";
 import { StatusHeader } from "@/components/StatusHeader";
 import { outcomeLabel } from "@/lib/reasons";
 import { buildRuns, lastRunPerRule } from "@/lib/runs";
 import { describeSchedule, parseRule } from "@/lib/schedule";
+import { groupByNext, nextTime } from "@/lib/schedule-list";
 import { clearSearch, matches, useSearchQuery } from "@/lib/search";
 import { ScheduleBuilder } from "./ScheduleBuilder";
+import "./ScheduleList.css";
 
 export function ScheduleListScreen() {
   const rulesQuery = useRules();
   const rules = rulesQuery.data ?? [];
-  const timers = useTimers().data;
+  const timersQuery = useTimers();
+  const timers = timersQuery.data;
   const events = useEvents().data ?? [];
   const names = useNames();
   const time = useTime();
   const home = useHome();
+  const devices = useDevices().data ?? [];
+  const groups = useGroups().data ?? [];
   const navigate = useNavigate();
   const toggle = useToggleRule();
   const query = useSearchQuery();
   const [params, setParams] = useSearchParams();
   const status = params.get("status") ?? "all";
-  const setStatus = (v: string) =>
+  const view = params.get("view") === "device" ? "device" : "next";
+  const target = params.get("target") ?? "all";
+  const setFilter = (key: string, value: string) =>
     setParams((p) => {
-      p.set("status", v);
+      p.set(key, value);
       return p;
     });
-  const [building, setBuilding] = useState<Rule | null | undefined>(undefined);
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      if (!restored.current) {
+        restored.current = true;
+        const saved = sessionStorage.getItem("schedule-list-filters");
+        if (!params.size && saved) {
+          setParams(new URLSearchParams(saved), { replace: true });
+          return;
+        }
+      }
+      const saved = new URLSearchParams(params);
+      saved.delete("new");
+      sessionStorage.setItem("schedule-list-filters", saved.toString());
+    } catch {
+      // Browsing still works when session storage is unavailable.
+    }
+  }, [params, setParams]);
+  const [building, setBuilding] = useState<Rule | null | undefined>(() =>
+    params.get("new") === "1" ? null : undefined,
+  );
 
   const runs = useMemo(() => buildRuns(events), [events]);
   const lastRuns = useMemo(() => lastRunPerRule(runs), [runs]);
 
   const visible = rules.filter(
     (rule) =>
+      (target === "all" ||
+        rule.then.some((action) => {
+          const set = action.set ?? action.set_curve;
+          return (
+            set &&
+            (target === `device:${set.device}` ||
+              target === `group:${set.group}` ||
+              (target.startsWith("device:") &&
+                groups.find((group) => group.id === set.group)?.members.includes(target.slice(7))))
+          );
+        })) &&
       (status === "all" || (status === "enabled" ? rule.enabled : !rule.enabled)) &&
       matches(
         query,
@@ -45,37 +93,63 @@ export function ScheduleListScreen() {
       ),
   );
 
-  const blocks = useMemo(() => groupByTarget(visible, names), [visible, names]);
+  const blocks =
+    view === "device" ? groupByTarget(visible, names) : groupByNext(visible, timers?.next_due ?? {}, time);
 
   return (
     <div>
       <StatusHeader />
       <Stack gap={20}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "12px",
-          }}
-        >
-          <Row gap={8} wrap>
+        <Row gap={12} wrap justify="space-between">
+          <Muted>{visible.length} schedules</Muted>
+          <Row gap={16} wrap>
+            <Button variant="filled" icon="add" onClick={() => setBuilding(null)}>
+              New schedule
+            </Button>
+          </Row>
+        </Row>
+        <div className="schedule-filters" role="group" aria-label="Schedule view and filters">
+          <div>
+            <Select
+              label="View"
+              value={view}
+              onChange={(value) => setFilter("view", value)}
+              options={[
+                { value: "next", label: "Next scheduled" },
+                { value: "device", label: "By device" },
+              ]}
+            />
+          </div>
+          <div>
+            <Select
+              label="Device or group"
+              value={target}
+              onChange={(value) => setFilter("target", value)}
+              options={[
+                { value: "all", label: "All devices and groups" },
+                ...devices.map((device) => ({
+                  value: `device:${device.id}`,
+                  label: names.device(device.id),
+                })),
+                ...groups.map((group) => ({
+                  value: `group:${group.id}`,
+                  label: `Group: ${names.group(group.id)}`,
+                })),
+              ]}
+            />
+          </div>
+          <div>
             <Select
               label="Status"
               value={status}
-              onChange={setStatus}
+              onChange={(value) => setFilter("status", value)}
               options={[
                 { value: "all", label: "All schedules" },
                 { value: "enabled", label: "Enabled" },
                 { value: "disabled", label: "Disabled" },
               ]}
             />
-            <Muted>{visible.length} schedules</Muted>
-          </Row>
-          <Button variant="filled" icon="add" onClick={() => setBuilding(null)}>
-            New schedule
-          </Button>
+          </div>
         </div>
 
         {rulesQuery.isPending ? (
@@ -91,13 +165,26 @@ export function ScheduleListScreen() {
               variant="text"
               onClick={() => {
                 clearSearch();
-                setStatus("all");
+                setParams((p) => {
+                  p.set("status", "all");
+                  p.set("target", "all");
+                  p.delete("q");
+                  return p;
+                });
               }}
             >
               Clear filters
             </Button>
           </Empty>
         ) : null}
+
+        {timersQuery.isError ? (
+          <Muted>
+            Next scheduled times could not be refreshed.{" "}
+            <Button onClick={() => timersQuery.refetch()}>Retry</Button>
+          </Muted>
+        ) : null}
+        <Muted>Times shown in {time.zone}. Conditions are checked at the scheduled time.</Muted>
 
         {blocks.map((block) => {
           const blockRules = block.rules;
@@ -106,7 +193,7 @@ export function ScheduleListScreen() {
               <Stack gap={14}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Icon name="device_hub" />
+                    <Icon name={view === "device" ? "device_hub" : "schedule"} />
                     <h3
                       style={{
                         margin: 0,
@@ -127,14 +214,14 @@ export function ScheduleListScreen() {
                   {blockRules.map((rule) => {
                     const parsed = parseRule(rule);
                     const description = parsed.ok ? describeSchedule(parsed.schedule, names) : null;
-                    const nextDue = timers?.next_due?.[rule.id];
+                    const nextDue = nextTime(timers?.next_due?.[rule.id]);
                     const last = lastRuns.get(rule.id);
                     return (
                       <div
                         key={rule.id}
+                        className="schedule-row"
                         style={{
                           display: "flex",
-                          alignItems: "center",
                           justifyContent: "space-between",
                           gap: "14px",
                           padding: "10px 14px",
@@ -150,11 +237,22 @@ export function ScheduleListScreen() {
                         >
                           <Switch
                             checked={rule.enabled}
-                            label={`${rule.enabled ? "Disable" : "Enable"} ${rule.name ?? rule.id}`}
+                            label={`${rule.enabled ? "Disable" : "Enable"} ${names.rule(rule.id)}`}
                             disabled={toggle.isPending}
                             onChange={(next) => toggle.mutate({ id: rule.id, enabled: next })}
                           />
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <strong style={{ color: "var(--md-sys-color-primary)", fontSize: "16px" }}>
+                              {!rule.enabled
+                                ? "Disabled"
+                                : rule.when.device
+                                  ? "On change / event"
+                                  : nextDue
+                                    ? `${time.stamp(nextDue)} · ${time.rel(nextDue)}`
+                                    : timersQuery.isPending
+                                      ? "Loading next time…"
+                                      : "Next time unavailable"}
+                            </strong>
                             <Link
                               to={`/schedules/${encodeURIComponent(rule.id)}`}
                               style={{
@@ -163,32 +261,17 @@ export function ScheduleListScreen() {
                                 color: "var(--md-sys-color-on-surface)",
                               }}
                             >
-                              {rule.name ?? rule.id}
+                              {names.rule(rule.id)}
                             </Link>
-                            {description && <Muted>{description.sentence}</Muted>}
+                            {description && rule.name && rule.name !== description.sentence && (
+                              <Muted>{description.sentence}</Muted>
+                            )}
                             <Row gap={6} wrap>
                               {rule.once ? <Badge tone="accent">one-shot</Badge> : null}
                               {!parsed.ok ? <Badge tone="warn">raw JSON</Badge> : null}
-                              {last ? (
-                                <Badge
-                                  tone={
-                                    last.outcome === "ran"
-                                      ? "ok"
-                                      : last.outcome === "nothing"
-                                        ? "muted"
-                                        : last.outcome === "failed"
-                                          ? "bad"
-                                          : "warn"
-                                  }
-                                >
+                              {last?.outcome === "failed" ? (
+                                <Badge tone="bad">
                                   Last: {outcomeLabel(last.outcome)} {time.stamp(last.ts)}
-                                </Badge>
-                              ) : (
-                                <Badge tone="muted">No recent run</Badge>
-                              )}
-                              {nextDue ? (
-                                <Badge tone="muted">
-                                  Next {time.stamp(nextDue)} ({time.rel(nextDue)})
                                 </Badge>
                               ) : null}
                             </Row>
@@ -231,7 +314,7 @@ export function ScheduleListScreen() {
 
 function describeRuleText(rule: Rule, names: ReturnType<typeof useNames>): string {
   const parsed = parseRule(rule);
-  return parsed.ok ? describeSchedule(parsed.schedule, names).sentence : (rule.name ?? rule.id);
+  return parsed.ok ? describeSchedule(parsed.schedule, names).sentence : names.rule(rule.id);
 }
 
 interface Block {

@@ -193,6 +193,33 @@ function useRuleInvalidation() {
   };
 }
 
+export function useDeleteGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteGroup(id),
+    onSuccess: () => {
+      notify("ok", "group deleted");
+      queryClient.invalidateQueries({ queryKey: keys.groups });
+      queryClient.invalidateQueries({ queryKey: keys.events });
+    },
+    onError: (error) => notify("bad", errorMessage(error)),
+  });
+}
+
+export function useSaveGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ referenced_by: _references, ...group }: Group) => api.putGroup(group.id, group),
+    onSuccess: () => {
+      notify("ok", "group saved");
+      queryClient.invalidateQueries({ queryKey: keys.groups });
+      queryClient.invalidateQueries({ queryKey: keys.rules });
+      queryClient.invalidateQueries({ queryKey: keys.events });
+    },
+    onError: (error) => notify("bad", errorMessage(error)),
+  });
+}
+
 export function useSaveRule() {
   const invalidate = useRuleInvalidation();
   return useMutation({

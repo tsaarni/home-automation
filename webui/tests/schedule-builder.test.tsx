@@ -2,11 +2,16 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { deviceSchema, type Rule } from "@/api/types";
+import { deviceSchema, type Group, type Rule } from "@/api/types";
 import { ScheduleBuilder } from "@/features/schedules/ScheduleBuilder";
 import { makeNames } from "@/home/names";
 
-const state = vi.hoisted(() => ({ mutate: vi.fn(), error: null as Error | null }));
+const state = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  saveGroup: vi.fn(),
+  groups: [] as Group[],
+  error: null as Error | null,
+}));
 const devices = [
   deviceSchema.parse({
     id: "light",
@@ -16,15 +21,19 @@ const devices = [
 ];
 vi.mock("@/api/queries", () => ({
   useDevices: () => ({ data: devices }),
-  useGroups: () => ({ data: [] }),
+  useGroups: () => ({ data: state.groups }),
   useRules: () => ({ data: [{ id: "same-name" }] }),
-  useNames: () => makeNames(devices, [], []),
+  useNames: () => makeNames(devices, [], state.groups),
+  useSaveGroup: () => ({ mutate: state.saveGroup, isPending: false }),
+  useDeleteGroup: () => ({ mutate: vi.fn(), isPending: false }),
   useSaveRule: () => ({ mutate: state.mutate, error: state.error, isPending: false }),
 }));
 afterEach(() => {
   cleanup();
   state.mutate.mockReset();
   state.error = null;
+  state.groups = [];
+  state.saveGroup.mockReset();
 });
 function mount(rule: Rule | null = null, onClose = vi.fn()) {
   const router = createMemoryRouter([
@@ -43,6 +52,27 @@ function input(container: HTMLElement, label: string, value: string) {
   fireEvent.input(field);
 }
 describe("schedule editor", () => {
+  it.each(["Cancel", "Save changes"])("preserves the schedule draft after group editing via %s", (action) => {
+    state.groups = [{ id: "lights", name: "Lights", members: ["light"], referenced_by: [] }];
+    state.saveGroup.mockImplementation((_group, options) => options.onSuccess());
+    const { container } = mount();
+    input(container, "Name (optional)", "My unsaved schedule");
+    input(container, "Time", "02:15");
+    choose(container, "Device or group", "group:lights");
+    choose(container, "Set to", "OFF");
+    fireEvent.click(screen.getByText("View/edit group"));
+    expect(screen.getByText("Edit group")).toBeTruthy();
+    fireEvent.click(screen.getByText(action));
+    expect(container.querySelector('[label="Name (optional)"]')?.getAttribute("value")).toBe(
+      "My unsaved schedule",
+    );
+    expect(container.querySelector('[label="Time"]')?.getAttribute("value")).toBe("02:15");
+    fireEvent.click(screen.getByText("Create schedule"));
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({
+      name: "My unsaved schedule",
+      then: [{ set: { group: "lights", value: "OFF" } }],
+    });
+  });
   it("keeps untouched errors quiet, validates on submit and retains server errors", () => {
     state.error = new Error("Save rejected");
     mount();
@@ -52,19 +82,29 @@ describe("schedule editor", () => {
     expect(screen.getByText(/Save rejected/)).toBeTruthy();
     expect(state.mutate).not.toHaveBeenCalled();
   });
-  it("creates a daily action with a unique ID while preserving the chosen value", () => {
+  it("creates a one-shot action with a unique ID while preserving the chosen value", () => {
     const { container } = mount();
     choose(container, "Device or group", "device:light");
     choose(container, "Set to", "OFF");
+    input(container, "Time", "01:00");
     input(container, "Name (optional)", "Same name");
     fireEvent.click(screen.getByText("Create schedule"));
     const doc = state.mutate.mock.calls[0][0] as Rule;
     expect(doc.id).toMatch(/^same-name-[0-9a-f-]{36}$/);
-    expect(doc.when.at).toBe("23:30");
+    expect(doc.when.at).toBe("01:00");
+    expect(doc.once).toBe(true);
     expect(doc.when.days).toBeUndefined();
     expect(doc.then[0].set?.value).toBe("OFF");
     fireEvent.click(screen.getByText("Create schedule"));
     expect(state.mutate.mock.calls[1][0].id).toBe(doc.id);
+  });
+  it("leaves generated summaries out of the optional name", () => {
+    const { container } = mount();
+    choose(container, "Device or group", "device:light");
+    expect(container.querySelector('[label="Repeat"]')).toBeNull();
+    fireEvent.click(screen.getByText("Create schedule"));
+    expect(state.mutate.mock.calls[0][0].name).toBeNull();
+    expect(state.mutate.mock.calls[0][0].when.days).toBeUndefined();
   });
   it("preserves per-trigger drafts and rejects custom days with no selection", () => {
     const { container } = mount();
@@ -74,6 +114,7 @@ describe("schedule editor", () => {
     choose(container, "Trigger", "every");
     expect(container.querySelector('[label="Interval"]')?.getAttribute("value")).toBe("37");
     choose(container, "Trigger", "at");
+    choose(container, "Run", "repeat");
     choose(container, "Repeat", "custom");
     fireEvent.click(screen.getByText("Create schedule"));
     expect(screen.getByText("Choose at least one custom day.")).toBeTruthy();
